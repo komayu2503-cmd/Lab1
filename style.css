@@ -1,4 +1,9 @@
-/* Post Publisher additional styles */
+body { 
+  font-family: Arial, sans-serif; 
+  font-size: 16px; 
+  background: #c5ad97; 
+  margin: 0; 
+} 
 * {
     font-size: 20px;
 }
@@ -6,7 +11,7 @@
     max-width: 900px;
     margin: 2rem auto;
     padding: 1.5rem;
-    background-color: rgba(165, 121, 121, 0.945);
+    background-color: #af957c;
     border-radius: 8px;
 }
 
@@ -22,8 +27,8 @@
 }
 
 textarea.invalid {
-    border-color: #ff6b6b;
-    background-color: rgba(255,107,107,0.05);
+    border-color: #9d8361;
+    background-color: #ebe5d5;
 }
 
 .small-row {
@@ -41,7 +46,7 @@ textarea.invalid {
 .posts-table th,
 .posts-table td {
     padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
+    border-bottom: 1px solid #322d29;
     text-align: left;
     vertical-align: top;
 }
@@ -63,10 +68,10 @@ textarea.invalid {
 .form-group select,
 .form-group textarea {
     padding: 0.75rem;
-    border: 2px solid rgba(255, 255, 255, 0.12);
+    border: 2px solid #322d29;
     border-radius: 6px;
-    background-color: rgba(255, 255, 255, 0.03);
-    color: rgba(255, 255, 255, 0.95);
+    background-color: #322d29;
+    color: #d9d9d9;
     font-size: 1rem;
     transition: border-color 0.2s ease, box-shadow 0.15s ease;
 }
@@ -75,7 +80,7 @@ textarea.invalid {
 .form-group textarea:focus,
 .form-group input:focus {
     outline: none;
-    border-color: #646cff;
+    border-color: #e8d1c1;
     box-shadow: 0 0 0 4px rgba(100,108,255,0.06);
 }
 
@@ -114,14 +119,15 @@ textarea.invalid {
 }
 
 .form-actions .primary {
-    background-color: #646cff;
-    color: white;
+    background-color: #322d29;
+    color: #e8d1c1;
     border: none;
 }
 
 .form-actions button {
     padding: 0.6rem 1rem;
     border-radius: 6px;
+    background-color: #e8d1c1;
 }
 
 /* Make all form fields have black background and white text */
@@ -132,12 +138,12 @@ textarea.invalid {
 .form-group input[type="number"],
 .form-group select,
 .form-group textarea {
-    background-color: #000;
-    color: #fff;
-    border-color: rgba(255,255,255,0.12);
+    background-color: #e8d1c1;
+    color: #424123;
+    border-color: #322d29;
 }
 
 .form-group input::placeholder,
 .form-group textarea::placeholder {
-    color: rgba(255,255,255,0.6);
+    color: #d9d9d9;
 }
