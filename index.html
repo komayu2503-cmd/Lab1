@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<!-- <link rel="icon" type="image/svg+xml" href="/vite.svg" /> -->
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<link rel="stylesheet" href="./style.css" />
+	<title>javascript-training-app</title>
+</head>
+
+<body>
+	<script defer src="./post-publisher.js"></script>
+	<div class="posts-container">
+		<h2>Публікація постів</h2>
+		<div class="post-form">
+			<form id="postForm">
+				<input type="hidden" id="postId" />
+
+				<div class="form-group user-select-group">
+					<label for="userSelect">Юзер</label>
+					<select id="userSelect">
+						<option value="">-- оберіть юзера --</option>
+					</select>
+					<span class="error-message" id="userSelectError"></span>
+				</div>
+
+				<div class="form-group">
+					<label for="title">Заголовок</label>
+					<input type="text" id="title" name="title" required />
+					<span class="error-message" id="titleError"></span>
+				</div>
+
+				<div class="form-group">
+					<label for="category">Категорія</label>
+					<select id="category" name="category" required>
+						<option value="">-- оберіть категорію --</option>
+					</select>
+					<span class="error-message" id="categoryError"></span>
+				</div>
+
+				<div class="form-group">
+					<label for="text">Текст (максимум 200 слів)</label>
+					<textarea id="text" name="text" rows="6" required></textarea>
+					<div class="small-row">
+						<span class="error-message" id="textError"></span>
+						<span id="wordCount">0/200 слів</span>
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label for="author">Автор (email)</label>
+					<input type="email" id="author" name="author" required />
+					<span class="error-message" id="authorError"></span>
+				</div>
+
+				<div class="form-actions">
+					<button type="button" id="saveBtn" class="primary">Зберегти</button>
+					<button type="button" id="clearBtn">Очистити</button>
+				</div>
+			</form>
+		</div>
+
+		<h3>Посты</h3>
+		<div class="posts-table">
+			<table id="postsTable">
+				<thead>
+					<tr>
+						<th>Заголовок</th>
+						<th>Категорія</th>
+						<th>Текст</th>
+						<th>Автор</th>
+						<th>Створено</th>
+						<th>Дії</th>
+					</tr>
+				</thead>
+				<tbody></tbody>
+			</table>
+		</div>
+	</div>
+
+</body>
+
+</html>
