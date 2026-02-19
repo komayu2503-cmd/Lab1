@@ -1,6 +1,6 @@
 {
   "name": "labone",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "lab1",
   "homepage": "https://github.com/komayu2503-cmd/Lab1#readme",
   "bugs": {
@@ -14,7 +14,5 @@
   "author": "Kiwi",
   "type": "commonjs",
   "main": "app.js",
-  "scripts": {
-   
-  }
+  "scripts": {}
 }
