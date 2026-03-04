@@ -1,4 +1,4 @@
-// Post Publisher Example
+
 
 const users = [
 	{ id: 1, name: 'Alice', email: 'alice@example.com' },
@@ -8,9 +8,7 @@ const users = [
 
 const categories = ['News', 'Tutorial', 'Opinion', 'Announcement'];
 
-// Populate selects (moved below after elements are available)
 
-// Elements
 const postForm = document.querySelector('#postForm');
 const userSelect = document.querySelector('#userSelect');
 const userSelectErrorEl = document.querySelector('#userSelectError');
@@ -23,8 +21,10 @@ const saveBtn = document.querySelector('#saveBtn');
 const clearBtn = document.querySelector('#clearBtn');
 const postsTableBody = document.querySelector('#postsTable tbody');
 const wordCountEl = document.querySelector('#wordCount');
+const sortDateBtn = document.querySelector('#sortDateBtn');
+const sortDirectionIconEl = document.querySelector('#sortDirectionIcon');
 
-// now populate selects
+
 users.forEach(u => {
 	const opt = document.createElement('option');
 	opt.value = u.id;
@@ -39,10 +39,11 @@ categories.forEach(c => {
 	categoryEl.appendChild(opt);
 });
 
-// Storage key
+
 const STORAGE_KEY = 'posts_data_v1';
 
 let posts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let sortDirection = 'desc'; // or 'asc'
 
 function savePosts() {
 	localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
@@ -50,6 +51,12 @@ function savePosts() {
 
 function renderPosts() {
 	postsTableBody.innerHTML = '';
+	console.log(posts);
+	let sortedPosts = posts.sort((a, b) => {
+		const dateA = new Date(a.createdAt);
+		const dateB = new Date(b.createdAt);
+		return sortDirection === 'desc' ? dateB - dateA : dateA - dateB;
+	});
 	posts.forEach(post => {
 		const tr = document.createElement('tr');
 		const shortText = post.text.length > 200 ? post.text.slice(0, 200) + '…' : post.text;
@@ -68,6 +75,9 @@ function renderPosts() {
 
 		postsTableBody.appendChild(tr);
 	});
+	if (sortDirectionIconEl) {
+		sortDirectionIconEl.textContent = sortDirection === 'desc' ? '↓' : '↑';
+	}
 }
 
 function escapeHtml(s) {
@@ -108,7 +118,7 @@ function countWords(text) {
 	return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
-// Validate a single field immediately after user input
+
 function validateField(fieldName) {
 	switch (fieldName) {
 		case 'title': {
@@ -161,7 +171,7 @@ function validateField(fieldName) {
 				document.querySelector('#authorError').textContent = 'Невірний email';
 				authorEl.classList.add('invalid');
 				if (userSelect) {
-					userSelect.value = ''; // clear user select if email is invalid
+					userSelect.value = ''; 
 					userSelect.classList.remove('invalid');
 					userSelectErrorEl.textContent = '';
 				}
@@ -217,11 +227,11 @@ function validateAll() {
 		textEl.classList.remove('invalid');
 	}
 
-	// Author (also show error near user select if author empty)
+	// Author
 	if (!authorEl.value.trim()) {
 		document.querySelector('#authorError').textContent = 'Поле обов\'язкове';
 		authorEl.classList.add('invalid');
-		// show error next to user select as requested
+		
 		if (userSelect) {
 			userSelect.classList.add('invalid');
 			userSelectErrorEl.textContent = 'Поле обов\'язкове';
@@ -243,11 +253,10 @@ function validateAll() {
 	return valid;
 }
 
-// Word count enforcement
+
 textEl.addEventListener('input', () => {
 	const words = countWords(textEl.value);
 	if (words > 200) {
-		// trim to 200 words
 		const parts = textEl.value.trim().split(/\s+/).filter(Boolean).slice(0, 200);
 		textEl.value = parts.join(' ');
 	}
@@ -255,21 +264,18 @@ textEl.addEventListener('input', () => {
 	validateField('text');
 });
 
-// User select fills author email
 userSelect.addEventListener('change', () => {
 	const id = userSelect.value;
 	const u = users.find(x => String(x.id) === String(id));
 	if (u) authorEl.value = u.email;
-	// validate author (and clear errors) after selecting user
+	
 	validateField('author');
 });
 
-// clear user select error when author manually typed
 authorEl.addEventListener('input', () => {
 	validateField('author');
 });
 
-// Immediate validation for other fields
 titleEl.addEventListener('input', () => validateField('title'));
 titleEl.addEventListener('blur', () => validateField('title'));
 categoryEl.addEventListener('change', () => validateField('category'));
@@ -290,7 +296,6 @@ saveBtn.addEventListener('click', () => {
 	const now = new Date().toISOString();
 
 	if (currentEditingId) {
-		// update existing post, keep id but overwrite createdAt as requested
 		const idx = posts.findIndex(p => p.id === currentEditingId);
 		if (idx !== -1) {
 			posts[idx] = { ...posts[idx], ...data, createdAt: now };
@@ -306,11 +311,9 @@ saveBtn.addEventListener('click', () => {
 });
 
 clearBtn.addEventListener('click', () => {
-	// If editing, cancel edit. Otherwise clear form.
 	resetForm(true);
 });
 
-// Delegated table actions
 postsTableBody.addEventListener('click', (e) => {
 	const btn = e.target.closest('button');
 	if (!btn) return;
@@ -339,3 +342,11 @@ postsTableBody.addEventListener('click', (e) => {
 
 // initial render
 renderPosts();
+if (sortDateBtn) {
+	sortDateBtn.addEventListener('click', () => {
+		
+	   sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
+	   console.log(`Sorting by date, direction: ${sortDirection}`);
+	   renderPosts();
+	});
+}
