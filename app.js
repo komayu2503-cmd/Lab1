@@ -44,6 +44,7 @@ const STORAGE_KEY = 'posts_data_v1';
 
 let posts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 let sortDirection = 'desc'; // or 'asc'
+let sortField = 'createdAt';
 
 function savePosts() {
 	localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
@@ -53,11 +54,25 @@ function renderPosts() {
 	postsTableBody.innerHTML = '';
 	console.log(posts);
 	let sortedPosts = posts.sort((a, b) => {
-		const dateA = new Date(a.createdAt);
-		const dateB = new Date(b.createdAt);
-		return sortDirection === 'desc' ? dateB - dateA : dateA - dateB;
+		let valA = a[sortField];
+		let valB = b[sortField];
+
+		if(sortField === 'createdAt'){
+			valA = new Date (valA);
+			valB = new Date (valB);
+		}
+
+		if (typeof valA === 'string'){
+			valA = valA.toLowerCase();
+			valB = valB.toLowerCase();
+		}
+
+		if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+		if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+		return 0;
+	
 	});
-	posts.forEach(post => {
+	sortedPosts.forEach(post => {
 		const tr = document.createElement('tr');
 		const shortText = post.text.length > 200 ? post.text.slice(0, 200) + '…' : post.text;
 
@@ -350,3 +365,20 @@ if (sortDateBtn) {
 	   renderPosts();
 	});
 }
+
+document.querySelectorAll('#postsTable th[data-sort]')
+.forEach(th => {
+	th.style.cursor = "pointer";
+
+	th.addEventListener('click', () => {
+		const field = th.dataset.sort;
+		if (sortField === field) {
+			sortDirection = sortDirection ===
+			'asc' ? 'desc' : 'asc';
+		} else {
+			sortField = field;
+			sortDirection = 'asc';
+		}
+		renderPosts();
+	})
+});
