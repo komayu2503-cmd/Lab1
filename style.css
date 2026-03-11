@@ -55,8 +55,7 @@ textarea.invalid {
 .posts-table td:nth-child(3) {
     max-width: 100px;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+   
 }
 
 .form-group {
@@ -129,6 +128,10 @@ textarea.invalid {
     background-color: #e8d1c1;
 }
 
+.posts-table table th {
+    cursor:pointer;
+}
+
 /* Make all form fields have black background and white text */
 .form-group input,
 .form-group input[type="text"],
@@ -146,3 +149,4 @@ textarea.invalid {
 .form-group textarea::placeholder {
     color: #d9d9d9;
 }
+

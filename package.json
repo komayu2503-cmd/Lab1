@@ -14,5 +14,8 @@
   "author": "Kiwi",
   "type": "commonjs",
   "main": "app.js",
-  "scripts": {}
+  "scripts": {},
+  "dependencies": {
+    "cors": "^2.8.6"
+  }
 }
