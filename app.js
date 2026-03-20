@@ -1,12 +1,8 @@
 
 
-const users = [
-	{ id: 1, name: 'Alice', email: 'alice@example.com' },
-	{ id: 2, name: 'Bob', email: 'bob@example.com' },
-	{ id: 3, name: 'Carol', email: 'carol@example.com' }
-];
+let users = [];
 
-const categories = ['News', 'Tutorial', 'Opinion', 'Announcement'];
+let categories = [];
 
 
 const postForm = document.querySelector('#postForm');
@@ -24,6 +20,34 @@ const wordCountEl = document.querySelector('#wordCount');
 const sortDateBtn = document.querySelector('#sortDateBtn');
 const sortDirectionIconEl = document.querySelector('#sortDirectionIcon');
 
+function getUsersAndCategories() {
+fetch('http://localhost:2000/users')
+	.then(response => response.json())
+	.then(_users => {
+		users = _users;
+		users.forEach(u => {
+			const opt = document.createElement('option');
+			opt.value = u.id;
+			opt.textContent = `${u.name} (${u.email})`;
+			userSelect.appendChild(opt);
+			
+		});
+		
+	});
+
+fetch('http://localhost:2000/categories')
+	.then(response => response.json())
+	.then(_categories => {
+		categories = _categories;
+		categories.forEach(c => {
+			const opt = document.createElement('option');
+			opt.value = c;
+			opt.textContent = c;
+			categoryEl.appendChild(opt);
+		});
+				
+	});
+}
 
 users.forEach(u => {
 	const opt = document.createElement('option');
@@ -40,15 +64,25 @@ categories.forEach(c => {
 });
 
 
-const STORAGE_KEY = 'posts_data_v1';
-
-let posts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+const API_URL = 'http://localhost:2000';
+let posts = [];
 let sortDirection = 'desc'; // or 'asc'
 let sortField = 'createdAt';
 
-function savePosts() {
-	localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
+async function getPosts() {
+	try {
+		const sort = sortField === 'createdAt' ? sortDirection : 'desc';
+		const response = await fetch(`${API_URL}/posts?sort=${sort}`);
+		if (!response.ok) throw new Error('Failed to fetch posts');
+		posts = await response.json();
+		renderPosts();
+	} catch (error) {
+		console.error('Error fetching posts:', error);
+		posts = [];
+		renderPosts();
+	}
 }
+
 
 function renderPosts() {
 	postsTableBody.innerHTML = '';
@@ -298,7 +332,7 @@ authorEl.addEventListener('blur', () => validateField('author'));
 
 let currentEditingId = null;
 
-saveBtn.addEventListener('click', () => {
+saveBtn.addEventListener('click', async () => {
 	if (!validateAll()) return;
 
 	const data = {
@@ -308,37 +342,65 @@ saveBtn.addEventListener('click', () => {
 		author: authorEl.value.trim()
 	};
 
-	const now = new Date().toISOString();
-
-	if (currentEditingId) {
-		const idx = posts.findIndex(p => p.id === currentEditingId);
-		if (idx !== -1) {
-			posts[idx] = { ...posts[idx], ...data, createdAt: now };
-		}
-	} else {
-		const id = String(Date.now()) + Math.floor(Math.random() * 1000);
-		posts.unshift({ id, ...data, createdAt: now });
+	// Add userId if a user is selected
+	if (userSelect && userSelect.value) {
+		data.userId = userSelect.value;
 	}
 
-	savePosts();
-	renderPosts();
-	resetForm(true);
+	try {
+		let response;
+		
+		if (currentEditingId) {
+			// Update existing post
+			response = await fetch(`${API_URL}/posts/${currentEditingId}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(data)
+			});
+		} else {
+			// Create new post
+			response = await fetch(`${API_URL}/posts`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(data)
+			});
+		}
+
+		if (!response.ok) {
+			const error = await response.json();
+			throw new Error(error.error || 'Failed to save post');
+		}
+
+		await getPosts();
+		resetForm(true);
+	} catch (error) {
+		console.error('Error saving post:', error);
+		alert(`Error saving post: ${error.message}`);
+	}
 });
 
 clearBtn.addEventListener('click', () => {
 	resetForm(true);
 });
 
-postsTableBody.addEventListener('click', (e) => {
+postsTableBody.addEventListener('click', async (e) => {
 	const btn = e.target.closest('button');
 	if (!btn) return;
 	const action = btn.dataset.action;
 	const id = btn.dataset.id;
 	if (action === 'delete') {
-		posts = posts.filter(p => p.id !== id);
-		savePosts();
-		renderPosts();
-		if (currentEditingId === id) resetForm(true);
+		if (!confirm('Are you sure you want to delete this post?')) return;
+		try {
+			const response = await fetch(`${API_URL}/posts/${id}`, {
+				method: 'DELETE'
+			});
+			if (!response.ok) throw new Error('Failed to delete post');
+			await getPosts();
+			if (currentEditingId === id) resetForm(true);
+		} catch (error) {
+			console.error('Error deleting post:', error);
+			alert(`Error deleting post: ${error.message}`);
+		}
 	} else if (action === 'edit') {
 		const p = posts.find(x => x.id === id);
 		if (!p) return;
@@ -356,13 +418,12 @@ postsTableBody.addEventListener('click', (e) => {
 });
 
 // initial render
-renderPosts();
+getPosts();
 if (sortDateBtn) {
-	sortDateBtn.addEventListener('click', () => {
-		
+	sortDateBtn.addEventListener('click', async () => {
 	   sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
 	   console.log(`Sorting by date, direction: ${sortDirection}`);
-	   renderPosts();
+	   await getPosts();
 	});
 }
 
@@ -382,3 +443,4 @@ document.querySelectorAll('#postsTable th[data-sort]')
 		renderPosts();
 	})
 });
+getUsersAndCategories();

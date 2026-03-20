@@ -55,8 +55,7 @@ textarea.invalid {
 .posts-table td:nth-child(3) {
     max-width: 100px;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+   
 }
 
 .form-group {
