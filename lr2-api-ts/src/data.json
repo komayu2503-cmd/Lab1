@@ -24,6 +24,15 @@
   ],
   "posts": [
     {
+      "id": "1774368984064775",
+      "title": "ыыыы",
+      "category": "News",
+      "text": "ы",
+      "author": "charlie@example.com",
+      "userId": 3,
+      "createdAt": "2026-03-24T16:16:24.064Z"
+    },
+    {
       "id": "1773338136008221",
       "title": "sssss",
       "category": "News",
@@ -37,10 +46,11 @@
       "id": "1773338017139403",
       "title": "gfgfggfgfgfg",
       "category": "Tutorial",
-      "text": "ssssssss",
+      "text": "ssssssssфяй",
       "author": "bird@gmail.com",
       "userId": null,
-      "createdAt": "2026-03-12T17:53:37.139Z"
+      "createdAt": "2026-03-12T17:53:37.139Z",
+      "updatedAt": "2026-03-24T16:17:42.684Z"
     }
   ]
 }

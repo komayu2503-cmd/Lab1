@@ -128,6 +128,10 @@ textarea.invalid {
     background-color: #e8d1c1;
 }
 
+.posts-table table th {
+    cursor:pointer;
+}
+
 /* Make all form fields have black background and white text */
 .form-group input,
 .form-group input[type="text"],

@@ -1,10 +1,10 @@
-import express, { Request, Response } from "express"; 
+import express, { Request, Response } from "express";
 import path = require("path");
 import fs = require("fs");
 import cors from "cors";
- 
-const app = express(); 
-app.use(express.json()); 
+
+const app = express();
+app.use(express.json());
 app.use(cors());
 
 const PORT = process.env.PORT || 3000;
@@ -14,11 +14,11 @@ function readData() {
   const raw = fs.readFileSync(DATA_FILE, 'utf-8');
   return JSON.parse(raw);
 }
- 
-app.get("/health", (req: Request, res: Response) => { 
-  res.status(200).json({ ok: true }); 
-}); 
- 
+
+app.get("/health", (req: Request, res: Response) => {
+  res.status(200).json({ ok: true });
+});
+
 
 function writeData(data: Record<string, any>) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
@@ -46,12 +46,13 @@ app.get('/posts', (req, res) => {
     category,
     author,
     userId,
-    sort = 'desc'
+    sortOrder = 'desc',
+    sortBy
   } = req.query;
 
   const query = String(q).trim().toLowerCase();
 
-  const filtered = data.posts.filter((post) => {
+  const filtered = data.posts.filter((post) => { //todo: search or delete
     const matchesQuery = query
       ? `${post.title} ${post.category} ${post.text} ${post.author}`.toLowerCase().includes(query)
       : true;
@@ -63,11 +64,30 @@ app.get('/posts', (req, res) => {
     return matchesQuery && matchesCategory && matchesAuthor && matchesUser;
   });
 
-  const sorted = filtered.sort((a, b) => {
-    const aTime = new Date(a.createdAt).getTime() || 0;
-    const bTime = new Date(b.createdAt).getTime() || 0;
-    return sort === 'asc' ? aTime - bTime : bTime - aTime;
+  let sorted = filtered.sort((a, b) => {
+    let valA = a[sortBy];
+    let valB = b[sortBy];
+
+    if (sortBy === 'createdAt') {
+      valA = new Date(valA);
+      valB = new Date(valB);
+    }
+
+    if (typeof valA === 'string') {
+      valA = valA.toLowerCase();
+      valB = valB.toLowerCase();
+    }
+
+    if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+    if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+
   });
+  // const sorted = filtered.sort((a, b) => {
+  //   const aTime = new Date(a.createdAt).getTime() || 0;
+  //   const bTime = new Date(b.createdAt).getTime() || 0;
+  //   return sort === 'asc' ? aTime - bTime : bTime - aTime;
+  // });
 
   res.json(sorted);
 });
@@ -199,6 +219,6 @@ app.get('/', (req, res) => {
 });
 
 
-app.listen(PORT, () => console.log("API started on http://localhost:" + PORT)); 
+app.listen(PORT, () => console.log("API started on http://localhost:" + PORT));
 
 

@@ -71,8 +71,7 @@ let sortField = 'createdAt';
 
 async function getPosts() {
 	try {
-		const sort = sortField === 'createdAt' ? sortDirection : 'desc';
-		const response = await fetch(`${API_URL}/posts?sort=${sort}`);
+		const response = await fetch(`${API_URL}/posts?sortOrder=${sortDirection}&sortBy=${sortField}`);
 		if (!response.ok) throw new Error('Failed to fetch posts');
 		posts = await response.json();
 		renderPosts();
@@ -87,26 +86,26 @@ async function getPosts() {
 function renderPosts() {
 	postsTableBody.innerHTML = '';
 	console.log(posts);
-	let sortedPosts = posts.sort((a, b) => {
-		let valA = a[sortField];
-		let valB = b[sortField];
+	// let sortedPosts = posts.sort((a, b) => {
+	// 	let valA = a[sortField];
+	// 	let valB = b[sortField];
 
-		if(sortField === 'createdAt'){
-			valA = new Date (valA);
-			valB = new Date (valB);
-		}
+	// 	if(sortField === 'createdAt'){
+	// 		valA = new Date (valA);
+	// 		valB = new Date (valB);
+	// 	}
 
-		if (typeof valA === 'string'){
-			valA = valA.toLowerCase();
-			valB = valB.toLowerCase();
-		}
+	// 	if (typeof valA === 'string'){
+	// 		valA = valA.toLowerCase();
+	// 		valB = valB.toLowerCase();
+	// 	}
 
-		if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-		if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
-		return 0;
+	// 	if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+	// 	if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+	// 	return 0;
 	
-	});
-	sortedPosts.forEach(post => {
+	// });
+	posts.forEach(post => {
 		const tr = document.createElement('tr');
 		const shortText = post.text.length > 200 ? post.text.slice(0, 200) + '…' : post.text;
 
@@ -429,7 +428,7 @@ if (sortDateBtn) {
 
 document.querySelectorAll('#postsTable th[data-sort]')
 .forEach(th => {
-	th.style.cursor = "pointer";
+
 
 	th.addEventListener('click', () => {
 		const field = th.dataset.sort;
@@ -440,7 +439,7 @@ document.querySelectorAll('#postsTable th[data-sort]')
 			sortField = field;
 			sortDirection = 'asc';
 		}
-		renderPosts();
+		getPosts();
 	})
 });
 getUsersAndCategories();
