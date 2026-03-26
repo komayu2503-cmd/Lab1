@@ -20,11 +20,12 @@ const wordCountEl = document.querySelector('#wordCount');
 const sortDateBtn = document.querySelector('#sortDateBtn');
 const sortDirectionIconEl = document.querySelector('#sortDirectionIcon');
 
+const API_URL = 'http://localhost:3000/api'
 function getUsersAndCategories() {
-fetch('http://localhost:2000/users')
+fetch(`${API_URL}/users`)
 	.then(response => response.json())
 	.then(_users => {
-		users = _users;
+		users = _users.items;
 		users.forEach(u => {
 			const opt = document.createElement('option');
 			opt.value = u.id;
@@ -35,10 +36,11 @@ fetch('http://localhost:2000/users')
 		
 	});
 
-fetch('http://localhost:2000/categories')
+
+fetch(`${API_URL}/categories`)
 	.then(response => response.json())
 	.then(_categories => {
-		categories = _categories;
+		categories = _categories.items;
 		categories.forEach(c => {
 			const opt = document.createElement('option');
 			opt.value = c;
@@ -49,22 +51,8 @@ fetch('http://localhost:2000/categories')
 	});
 }
 
-users.forEach(u => {
-	const opt = document.createElement('option');
-	opt.value = u.id;
-	opt.textContent = `${u.name} (${u.email})`;
-	userSelect.appendChild(opt);
-});
-
-categories.forEach(c => {
-	const opt = document.createElement('option');
-	opt.value = c;
-	opt.textContent = c;
-	categoryEl.appendChild(opt);
-});
 
 
-const API_URL = 'http://localhost:2000';
 let posts = [];
 let sortDirection = 'desc'; // or 'asc'
 let sortField = 'createdAt';
@@ -73,7 +61,8 @@ async function getPosts() {
 	try {
 		const response = await fetch(`${API_URL}/posts?sortOrder=${sortDirection}&sortBy=${sortField}`);
 		if (!response.ok) throw new Error('Failed to fetch posts');
-		posts = await response.json();
+		const { items } = await response.json();
+		posts = items;
 		renderPosts();
 	} catch (error) {
 		console.error('Error fetching posts:', error);
