@@ -1,115 +1,160 @@
-import { store } from "../store.js";
+import { all, get, run, sqlNullableNumber, sqlString } from "../db/client.js";
+import { categoriesRepository } from "./categories.repository.js";
 import type { Post, PostListQuery } from "../types.js";
 
-function getComparableValue(post: Post, field: NonNullable<PostListQuery['sortBy']>): string | number {
-  switch (field) {
-    case 'createdAt':
-      return new Date(post.createdAt).getTime();
-    case 'updatedAt':
-      return new Date(post.updatedAt ?? 0).getTime();
+type PostRow = {
+  id: string;
+  title: string;
+  category: string;
+  categoryId: number;
+  text: string;
+  author: string;
+  userId: number | null;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+function mapRow(row: PostRow): Post {
+  return {
+    id: row.id,
+    title: row.title,
+    category: row.category,
+    text: row.text,
+    author: row.author,
+    userId: row.userId,
+    createdAt: row.createdAt,
+    ...(row.updatedAt ? { updatedAt: row.updatedAt } : {})
+  };
+}
+
+function getOrderByClause(sortBy?: NonNullable<PostListQuery['sortBy']>, sortOrder?: NonNullable<PostListQuery['sortOrder']>): string {
+  const order = sortOrder === 'asc' ? 'ASC' : 'DESC';
+
+  switch (sortBy) {
     case 'title':
-      return post.title.toLowerCase();
+      return `ORDER BY p.title ${order}`;
     case 'category':
-      return post.category.toLowerCase();
+      return `ORDER BY c.name ${order}`;
     case 'author':
-      return post.author.toLowerCase();
+      return `ORDER BY p.author ${order}`;
+    case 'updatedAt':
+      return `ORDER BY COALESCE(p.updatedAt, p.createdAt) ${order}`;
+    case 'createdAt':
+    default:
+      return `ORDER BY p.createdAt ${order}`;
   }
+}
+
+function buildWhereClause(query: PostListQuery): string {
+  const conditions: string[] = [];
+
+  if (query.q) {
+    const normalizedQuery = query.q.trim().toLowerCase();
+    conditions.push(`(
+      lower(p.title) LIKE ${sqlString(`%${normalizedQuery}%`)} OR
+      lower(c.name) LIKE ${sqlString(`%${normalizedQuery}%`)} OR
+      lower(p.text) LIKE ${sqlString(`%${normalizedQuery}%`)} OR
+      lower(p.author) LIKE ${sqlString(`%${normalizedQuery}%`)}
+    )`);
+  }
+
+  if (query.category) {
+    conditions.push(`lower(c.name) = lower(${sqlString(query.category.trim())})`);
+  }
+
+  if (query.author) {
+    conditions.push(`lower(p.author) LIKE ${sqlString(`%${query.author.trim().toLowerCase()}%`)}`);
+  }
+
+  if (query.userId !== undefined) {
+    conditions.push(`p.userId = ${Number(query.userId)}`);
+  }
+
+  return conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+}
+
+function selectBaseSql(whereClause = '', orderByClause = 'ORDER BY p.createdAt DESC'): string {
+  return `
+    SELECT
+      p.id,
+      p.title,
+      c.name AS category,
+      p.categoryId,
+      p.text,
+      p.author,
+      p.userId,
+      p.createdAt,
+      p.updatedAt
+    FROM posts p
+    JOIN categories c ON c.id = p.categoryId
+    ${whereClause}
+    ${orderByClause};
+  `;
 }
 
 export const postsRepository = {
   getAll(query: PostListQuery): Post[] {
-    const normalizedQuery = query.q?.toLowerCase() ?? '';
-    let result = store.posts.filter((post) => {
-      if (normalizedQuery && !`${post.title} ${post.category} ${post.text} ${post.author}`.toLowerCase().includes(normalizedQuery)) {
-        return false;
-      }
+    const whereClause = buildWhereClause(query);
+    const orderByClause = getOrderByClause(query.sortBy, query.sortOrder);
 
-      if (query.category && post.category !== query.category) {
-        return false;
-      }
-
-      if (query.author && !post.author.toLowerCase().includes(query.author.toLowerCase())) {
-        return false;
-      }
-
-      if (query.userId !== undefined && post.userId !== query.userId) {
-        return false;
-      }
-
-      return true;
-    });
-
-    if (query.sortBy) {
-      const sortBy = query.sortBy;
-      result = [...result].sort((left, right) => {
-        const leftValue = getComparableValue(left, sortBy);
-        const rightValue = getComparableValue(right, sortBy);
-
-        if (leftValue < rightValue) {
-          return query.sortOrder === 'asc' ? -1 : 1;
-        }
-
-        if (leftValue > rightValue) {
-          return query.sortOrder === 'asc' ? 1 : -1;
-        }
-
-        return 0;
-      });
-    }
-
-    return result;
+    return all<PostRow>(selectBaseSql(whereClause, orderByClause)).map(mapRow);
   },
 
   getById(id: string): Post | undefined {
-    return store.posts.find((post) => post.id === id);
+    const row = get<PostRow>(selectBaseSql(`WHERE p.id = ${sqlString(id)}`));
+    return row ? mapRow(row) : undefined;
   },
 
   create(input: { title: string; category: string; text: string; author: string; userId: number | null }): Post {
-    const post: Post = {
-      id: `${Date.now()}${Math.floor(Math.random() * 1000)}`,
-      title: input.title,
-      category: input.category,
-      text: input.text,
-      author: input.author,
-      userId: input.userId,
-      createdAt: new Date().toISOString()
-    };
+    const category = categoriesRepository.getByName(input.category)!;
+    const now = new Date().toISOString();
+    const postId = `post-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-    store.posts.unshift(post);
-    return post;
+    run(`
+      INSERT INTO posts (id, title, categoryId, text, author, userId, createdAt)
+      VALUES (
+        ${sqlString(postId)},
+        ${sqlString(input.title)},
+        ${Number(category.id)},
+        ${sqlString(input.text)},
+        ${sqlString(input.author)},
+        ${sqlNullableNumber(input.userId)},
+        ${sqlString(now)}
+      );
+    `);
+
+    return this.getById(postId)!;
   },
 
   update(id: string, input: { title?: string; category?: string; text?: string; author?: string; userId?: number | null }): Post | undefined {
-    const index = store.posts.findIndex((post) => post.id === id);
+    const current = get<PostRow>(selectBaseSql(`WHERE p.id = ${sqlString(id)}`));
 
-    if (index === -1) {
+    if (!current) {
       return undefined;
     }
 
-    const current = store.posts[index]!;
-    const updated: Post = {
-      id: current.id,
-      title: input.title ?? current.title,
-      category: input.category ?? current.category,
-      text: input.text ?? current.text,
-      author: input.author ?? current.author,
-      userId: input.userId !== undefined ? input.userId : current.userId,
-      createdAt: current.createdAt,
-      updatedAt: new Date().toISOString()
-    };
+    const nextCategoryId = input.category
+      ? categoriesRepository.getByName(input.category)?.id ?? current.categoryId
+      : current.categoryId;
+    const nextUserId = input.userId !== undefined ? input.userId : current.userId;
+    const now = new Date().toISOString();
 
-    store.posts[index] = updated;
-    return updated;
+    run(`
+      UPDATE posts
+      SET
+        title = ${sqlString(input.title ?? current.title)},
+        categoryId = ${Number(nextCategoryId)},
+        text = ${sqlString(input.text ?? current.text)},
+        author = ${sqlString(input.author ?? current.author)},
+        userId = ${sqlNullableNumber(nextUserId)},
+        updatedAt = ${sqlString(now)}
+      WHERE id = ${sqlString(id)};
+    `);
+
+    return this.getById(id);
   },
 
   delete(id: string): boolean {
-    const index = store.posts.findIndex((post) => post.id === id);
-
-    if (index === -1) {
-      return false;
-    }
-
-    store.posts.splice(index, 1);
-    return true;
+    return run(`DELETE FROM posts WHERE id = ${sqlString(id)};`).changes > 0;
   }
 };

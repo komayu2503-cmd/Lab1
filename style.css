@@ -132,6 +132,28 @@ textarea.invalid {
     cursor:pointer;
 }
 
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+.pagination select,
+.pagination button {
+    padding: 0.45rem 0.7rem;
+    border-radius: 6px;
+    border: 1px solid #322d29;
+    background-color: #e8d1c1;
+    color: #322d29;
+}
+
+.pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Make all form fields have black background and white text */
 .form-group input,
 .form-group input[type="text"],

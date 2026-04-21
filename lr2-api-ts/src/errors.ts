@@ -8,3 +8,7 @@ export function errValidation(details: Detail[]): AppError {
 export function errNotFound(message: string): AppError {
   return new AppError(404, 'NOT_FOUND', message, [] as Detail[]);
 }
+
+export function errConflict(message: string, details: Detail[] = []): AppError {
+  return new AppError(409, 'CONFLICT', message, details);
+}

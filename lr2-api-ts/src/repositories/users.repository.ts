@@ -1,56 +1,62 @@
-import { store } from "../store.js";
+import { all, get, run, sqlString } from "../db/client.js";
 import type { User } from "../types.js";
 
 export const usersRepository = {
   getAll(): User[] {
-    return store.users;
+    return all<User>(`
+      SELECT id, name, email
+      FROM users
+      ORDER BY id ASC;
+    `);
   },
 
   getById(id: number): User | undefined {
-    return store.users.find((user) => user.id === id);
+    return get<User>(`
+      SELECT id, name, email
+      FROM users
+      WHERE id = ${Number(id)};
+    `);
   },
 
   emailExists(email: string, excludeId?: number): boolean {
-    return store.users.some((user) => user.email === email && user.id !== excludeId);
+    const sql = excludeId === undefined
+      ? `SELECT id FROM users WHERE lower(email) = lower(${sqlString(email.trim())}) LIMIT 1;`
+      : `SELECT id FROM users WHERE lower(email) = lower(${sqlString(email.trim())}) AND id != ${Number(excludeId)} LIMIT 1;`;
+
+    return get<{ id: number }>(sql) !== undefined;
   },
 
   create(input: { name: string; email: string }): User {
-    const user: User = {
-      id: store.users.length > 0 ? Math.max(...store.users.map((item) => item.id)) + 1 : 1,
-      name: input.name,
-      email: input.email
-    };
+    const now = new Date().toISOString();
+    const result = run(`
+      INSERT INTO users (name, email, createdAt)
+      VALUES (${sqlString(input.name.trim())}, ${sqlString(input.email.trim())}, ${sqlString(now)});
+    `);
 
-    store.users.push(user);
-    return user;
+    return this.getById(result.lastInsertRowid)!;
   },
 
   update(id: number, input: { name?: string; email?: string }): User | undefined {
-    const index = store.users.findIndex((user) => user.id === id);
+    const user = this.getById(id);
 
-    if (index === -1) {
+    if (!user) {
       return undefined;
     }
 
-    const current = store.users[index]!;
-    const updated: User = {
-      id: current.id,
-      name: input.name ?? current.name,
-      email: input.email ?? current.email
-    };
+    const nextName = input.name ?? user.name;
+    const nextEmail = input.email ?? user.email;
+    const now = new Date().toISOString();
 
-    store.users[index] = updated;
-    return updated;
+    run(`
+      UPDATE users
+      SET name = ${sqlString(nextName)}, email = ${sqlString(nextEmail)}, updatedAt = ${sqlString(now)}
+      WHERE id = ${Number(id)};
+    `);
+
+    return this.getById(id);
   },
 
   delete(id: number): boolean {
-    const index = store.users.findIndex((user) => user.id === id);
-
-    if (index === -1) {
-      return false;
-    }
-
-    store.users.splice(index, 1);
-    return true;
+    return run(`DELETE FROM users WHERE id = ${Number(id)};`).changes > 0;
   }
 };

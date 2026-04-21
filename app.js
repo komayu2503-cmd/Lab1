@@ -19,13 +19,19 @@ const postsTableBody = document.querySelector('#postsTable tbody');
 const wordCountEl = document.querySelector('#wordCount');
 const sortDateBtn = document.querySelector('#sortDateBtn');
 const sortDirectionIconEl = document.querySelector('#sortDirectionIcon');
+const prevPageBtn = document.querySelector('#prevPageBtn');
+const nextPageBtn = document.querySelector('#nextPageBtn');
+const pageSelectEl = document.querySelector('#pageSelect');
+const paginationSummaryEl = document.querySelector('#paginationSummary');
 
-const API_URL = 'http://localhost:3000/api'
+const API_URL = 'http://localhost:3000/api';
+
 function getUsersAndCategories() {
 fetch(`${API_URL}/users`)
 	.then(response => response.json())
-	.then(_users => {
-		users = _users.items;
+	.then(payload => {
+		users = Array.isArray(payload) ? payload : payload.items || [];
+		userSelect.innerHTML = '<option value="">Оберіть користувача</option>';
 		users.forEach(u => {
 			const opt = document.createElement('option');
 			opt.value = u.id;
@@ -36,11 +42,11 @@ fetch(`${API_URL}/users`)
 		
 	});
 
-
 fetch(`${API_URL}/categories`)
 	.then(response => response.json())
-	.then(_categories => {
-		categories = _categories.items;
+	.then(payload => {
+		categories = Array.isArray(payload) ? payload : payload.items || [];
+		categoryEl.innerHTML = '<option value="">Оберіть категорію</option>';
 		categories.forEach(c => {
 			const opt = document.createElement('option');
 			opt.value = c;
@@ -50,24 +56,39 @@ fetch(`${API_URL}/categories`)
 				
 	});
 }
-
-
-
 let posts = [];
 let sortDirection = 'desc'; // or 'asc'
 let sortField = 'createdAt';
+let currentPage = 1;
+const pageSize = 5;
+let totalPages = 1;
+let totalItems = 0;
 
 async function getPosts() {
 	try {
-		const response = await fetch(`${API_URL}/posts?sortOrder=${sortDirection}&sortBy=${sortField}`);
+		const response = await fetch(`${API_URL}/posts?sortOrder=${sortDirection}&sortBy=${sortField}&page=${currentPage}&limit=${pageSize}`);
 		if (!response.ok) throw new Error('Failed to fetch posts');
-		const { items } = await response.json();
-		posts = items;
+			const payload = await response.json();
+			posts = Array.isArray(payload) ? payload : payload.items || [];
+			totalItems = Number(payload?.totalItems ?? payload?.total ?? posts.length);
+			totalPages = Number(payload?.totalPages ?? 1);
+			if (!Number.isFinite(totalPages) || totalPages < 1) {
+				totalPages = 1;
+			}
+			currentPage = Number(payload?.page ?? currentPage);
+			if (!Number.isFinite(currentPage) || currentPage < 1) {
+				currentPage = 1;
+			}
 		renderPosts();
+		renderPagination();
 	} catch (error) {
 		console.error('Error fetching posts:', error);
 		posts = [];
+		totalItems = 0;
+		totalPages = 1;
+		currentPage = 1;
 		renderPosts();
+		renderPagination();
 	}
 }
 
@@ -115,6 +136,27 @@ function renderPosts() {
 	if (sortDirectionIconEl) {
 		sortDirectionIconEl.textContent = sortDirection === 'desc' ? '↓' : '↑';
 	}
+}
+
+function renderPagination() {
+	if (!pageSelectEl || !paginationSummaryEl || !prevPageBtn || !nextPageBtn) {
+		return;
+	}
+
+	pageSelectEl.innerHTML = '';
+	for (let page = 1; page <= totalPages; page += 1) {
+		const option = document.createElement('option');
+		option.value = String(page);
+		option.textContent = String(page);
+		if (page === currentPage) {
+			option.selected = true;
+		}
+		pageSelectEl.appendChild(option);
+	}
+
+	paginationSummaryEl.textContent = `Всього елементів: ${totalItems} | Сторінок: ${totalPages}`;
+	prevPageBtn.disabled = currentPage <= 1;
+	nextPageBtn.disabled = currentPage >= totalPages;
 }
 
 function escapeHtml(s) {
@@ -356,7 +398,7 @@ saveBtn.addEventListener('click', async () => {
 
 		if (!response.ok) {
 			const error = await response.json();
-			throw new Error(error.error || 'Failed to save post');
+			throw new Error(error?.error?.message || 'Failed to save post');
 		}
 
 		await getPosts();
@@ -407,9 +449,11 @@ postsTableBody.addEventListener('click', async (e) => {
 
 // initial render
 getPosts();
+getUsersAndCategories();
 if (sortDateBtn) {
 	sortDateBtn.addEventListener('click', async () => {
 	   sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
+	   currentPage = 1;
 	   console.log(`Sorting by date, direction: ${sortDirection}`);
 	   await getPosts();
 	});
@@ -428,7 +472,35 @@ document.querySelectorAll('#postsTable th[data-sort]')
 			sortField = field;
 			sortDirection = 'asc';
 		}
+		currentPage = 1;
 		getPosts();
 	})
 });
-getUsersAndCategories();
+
+if (pageSelectEl) {
+	pageSelectEl.addEventListener('change', () => {
+		const selectedPage = Number(pageSelectEl.value);
+		if (Number.isInteger(selectedPage) && selectedPage > 0) {
+			currentPage = selectedPage;
+			getPosts();
+		}
+	});
+}
+
+if (prevPageBtn) {
+	prevPageBtn.addEventListener('click', () => {
+		if (currentPage > 1) {
+			currentPage -= 1;
+			getPosts();
+		}
+	});
+}
+
+if (nextPageBtn) {
+	nextPageBtn.addEventListener('click', () => {
+		if (currentPage < totalPages) {
+			currentPage += 1;
+			getPosts();
+		}
+	});
+}

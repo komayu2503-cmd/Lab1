@@ -36,6 +36,22 @@ export function parsePostListQuery(input: Record<string, unknown>): PostListQuer
     query.sortOrder = sortOrder;
   }
 
+  if (input.page !== undefined && input.page !== null && input.page !== '') {
+    const parsedPage = Number(input.page);
+
+    if (Number.isInteger(parsedPage) && parsedPage > 0) {
+      query.page = parsedPage;
+    }
+  }
+
+  if (input.limit !== undefined && input.limit !== null && input.limit !== '') {
+    const parsedLimit = Number(input.limit);
+
+    if (Number.isInteger(parsedLimit) && parsedLimit > 0) {
+      query.limit = Math.min(parsedLimit, 100);
+    }
+  }
+ 
   return query;
 }
 

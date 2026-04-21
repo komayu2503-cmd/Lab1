@@ -17,8 +17,21 @@ function getPostValidationDeps() {
 export const postsService = {
   list(input: Record<string, unknown>): ListResponse<PostDto> {
     const query = parsePostListQuery(input);
-    const items = postsRepository.getAll(query).map(postToDto);
-    return { items, total: items.length };
+    const allItems = postsRepository.getAll(query).map(postToDto);
+    const totalItems = allItems.length;
+    const pageSize = query.limit ?? 5;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const page = Math.min(query.page ?? 1, totalPages);
+    const startIndex = (page - 1) * pageSize;
+    const items = allItems.slice(startIndex, startIndex + pageSize);
+
+    return {
+      items,
+      totalItems,
+      totalPages,
+      page,
+      pageSize
+    };
   },
 
   getById(id: string): PostDto {
