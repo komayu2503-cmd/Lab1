@@ -1,6 +1,7 @@
 ﻿import express from "express";
 import type { Request, Response } from "express";
 import cors from "cors";
+import { initDb } from "./db/initDb.js";
 import { logger } from "./middleware/logger.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { usersRouter } from "./routes/users.router.js";
@@ -10,6 +11,8 @@ import { errNotFound } from "./errors.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+initDb();
 
 app.use(express.json());
 app.use(cors());

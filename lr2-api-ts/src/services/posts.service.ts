@@ -10,15 +10,20 @@ function getPostValidationDeps() {
   return {
     categoryExists: (category: string) => categoriesRepository.exists(category),
     userExists: (userId: number) => usersRepository.getById(userId) !== undefined,
-    categoriesLabel: categoriesRepository.getAll().join(', ')
+    getCategoriesLabel: () => categoriesRepository.getAll().map(c => c.name).join(', ')
   };
 }
 
 export const postsService = {
   list(input: Record<string, unknown>): ListResponse<PostDto> {
     const query = parsePostListQuery(input);
-    const items = postsRepository.getAll(query).map(postToDto);
-    return { items, total: items.length };
+    const totalItems = postsRepository.count(query);
+    const pageSize = query.limit ?? 5;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const page = Math.min(Math.max(1, query.page ?? 1), totalPages);
+    const items = postsRepository.getAll({ ...query, page, limit: pageSize }).map(postToDto);
+
+    return { items, totalItems, totalPages, page, pageSize };
   },
 
   getById(id: string): PostDto {
@@ -42,10 +47,6 @@ export const postsService = {
   },
 
   update(id: string, input: unknown): PostDto {
-    if (!postsRepository.getById(id)) {
-      throw errNotFound('Post not found');
-    }
-
     const validation = validateUpdatePostDto(input, getPostValidationDeps());
 
     if (validation.details.length > 0 || !validation.value) {
@@ -65,5 +66,17 @@ export const postsService = {
     if (!postsRepository.delete(id)) {
       throw errNotFound('Post not found');
     }
+  },
+
+  stats(): { category: string; postCount: number; latestPost: string | null }[] {
+    return postsRepository.getStats();
+  },
+
+  authorStats(): { category: string; uniqueAuthors: number; postCount: number }[] {
+    return postsRepository.getAuthorStats();
+  },
+
+  categoryPostStats(): { categories: { category: string; postCount: number }[]; averagePostsPerCategory: number } {
+    return postsRepository.getCategoryPostStats();
   }
 };

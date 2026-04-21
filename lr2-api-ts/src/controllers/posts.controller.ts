@@ -40,5 +40,29 @@ export const postsController = {
     } catch (error) {
       next(error);
     }
+  },
+
+  stats(_req: Request, res: Response, next: NextFunction): void {
+    try {
+      res.status(200).json(postsService.stats());
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  authorStats(_req: Request, res: Response, next: NextFunction): void {
+    try {
+      res.status(200).json(postsService.authorStats());
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  categoryPostStats(_req: Request, res: Response, next: NextFunction): void {
+    try {
+      res.status(200).json(postsService.categoryPostStats());
+    } catch (error) {
+      next(error);
+    }
   }
 };
