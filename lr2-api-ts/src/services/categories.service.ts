@@ -7,7 +7,7 @@ import type { CategoryDto, ListResponse } from "../types.js";
 export const categoriesService = {
   list(): ListResponse<CategoryDto> {
     const items = categoriesRepository.getAll().map(categoryToDto);
-    return { items, total: items.length };
+    return { items, totalItems: items.length };
   },
 
   getById(id: number): CategoryDto {

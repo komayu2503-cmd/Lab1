@@ -7,7 +7,7 @@ import type { ListResponse, UserDto } from "../types.js";
 export const usersService = {
   list(): ListResponse<UserDto> {
     const items = usersRepository.getAll().map(userToDto);
-    return { items, total: items.length };
+    return { items, totalItems: items.length };
   },
 
   getById(id: number): UserDto {

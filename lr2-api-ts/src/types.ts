@@ -18,8 +18,6 @@ export type Post = {
   updatedAt?: string;
 };
 
-export type AppData = { users: User[]; categories: string[]; posts: Post[] };
-
 export type Detail = { field: string; message: string };
 
 export type ApiErrorCode = 'VALIDATION_ERROR' | 'NOT_FOUND' | 'INTERNAL_ERROR' | 'CONFLICT';
@@ -32,11 +30,8 @@ export type ErrorResponse = {
   };
 };
 
-export type SuccessOrThrow<T> = T;
-
 export type ListResponse<T> = {
   items: T[];
-  
   totalItems: number;
   totalPages?: number;
   page?: number;
@@ -111,4 +106,3 @@ export type PostListQuery = {
   page?: number;
   limit?: number;
 };
-

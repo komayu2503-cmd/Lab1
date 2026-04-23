@@ -73,7 +73,7 @@ function buildWhereClause(query: PostListQuery): string {
   return conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 }
 
-function selectBaseSql(whereClause = '', orderByClause = 'ORDER BY p.createdAt DESC'): string {
+function selectBaseSql(whereClause = '', orderByClause = 'ORDER BY p.createdAt DESC', limitClause = ''): string {
   return `
     SELECT
       p.id,
@@ -88,16 +88,33 @@ function selectBaseSql(whereClause = '', orderByClause = 'ORDER BY p.createdAt D
     FROM posts p
     JOIN categories c ON c.id = p.categoryId
     ${whereClause}
-    ${orderByClause};
+    ${orderByClause}
+    ${limitClause};
   `;
 }
 
 export const postsRepository = {
+  count(query: PostListQuery): number {
+    type CountRow = { total: number };
+    const whereClause = buildWhereClause(query);
+    const row = get<CountRow>(`
+      SELECT COUNT(*) AS total
+      FROM posts p
+      JOIN categories c ON c.id = p.categoryId
+      ${whereClause};
+    `);
+    return row?.total ?? 0;
+  },
+
   getAll(query: PostListQuery): Post[] {
     const whereClause = buildWhereClause(query);
     const orderByClause = getOrderByClause(query.sortBy, query.sortOrder);
+    const pageSize = query.limit ?? 5;
+    const page = Math.max(1, query.page ?? 1);
+    const offset = (page - 1) * pageSize;
+    const limitClause = `LIMIT ${pageSize} OFFSET ${offset}`;
 
-    return all<PostRow>(selectBaseSql(whereClause, orderByClause)).map(mapRow);
+    return all<PostRow>(selectBaseSql(whereClause, orderByClause, limitClause)).map(mapRow);
   },
 
   getById(id: string): Post | undefined {
@@ -156,5 +173,20 @@ export const postsRepository = {
 
   delete(id: string): boolean {
     return run(`DELETE FROM posts WHERE id = ${sqlString(id)};`).changes > 0;
+  },
+
+  getStats(): { category: string; postCount: number; latestPost: string | null }[] {
+    type StatsRow = { category: string; postCount: number; latestPost: string | null };
+    return all<StatsRow>(`
+      SELECT
+        c.name AS category,
+        COUNT(p.id) AS postCount,
+        MAX(p.createdAt) AS latestPost
+      FROM categories c
+      LEFT JOIN posts p ON p.categoryId = c.id
+      GROUP BY c.id, c.name
+      ORDER BY postCount DESC, c.name ASC;
+    `);
   }
+  
 };

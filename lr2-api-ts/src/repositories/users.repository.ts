@@ -1,4 +1,4 @@
-import { all, get, run, sqlString } from "../db/client.js";
+import { all, get, getDb, run, sqlString } from "../db/client.js";
 import type { User } from "../types.js";
 
 export const usersRepository = {
@@ -57,6 +57,16 @@ export const usersRepository = {
   },
 
   delete(id: number): boolean {
-    return run(`DELETE FROM users WHERE id = ${Number(id)};`).changes > 0;
+    const db = getDb();
+    let deleted = false;
+
+    const transaction = db.transaction(() => {
+      run(`UPDATE posts SET userId = NULL, updatedAt = ${sqlString(new Date().toISOString())} WHERE userId = ${Number(id)};`);
+      const result = run(`DELETE FROM users WHERE id = ${Number(id)};`);
+      deleted = result.changes > 0;
+    });
+
+    transaction();
+    return deleted;
   }
 };

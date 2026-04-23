@@ -5,16 +5,9 @@ export type Migration = {
 
 export const migrations: Migration[] = [
   {
-    name: '001_create_users_categories_posts',
+    name: '001_create_categories_posts',
     sql: `
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL CHECK(length(trim(name)) BETWEEN 2 AND 50),
-        email TEXT NOT NULL UNIQUE,
-        createdAt TEXT NOT NULL,
-        updatedAt TEXT
-      );
-
+      
       CREATE TABLE IF NOT EXISTS categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE CHECK(length(trim(name)) BETWEEN 2 AND 50),
@@ -35,5 +28,24 @@ export const migrations: Migration[] = [
         FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
       );
     `
-  }
+  },
+  {
+    name: '002_add_indexes',
+    sql: `
+      CREATE INDEX IF NOT EXISTS idx_posts_category_id ON posts (categoryId);
+      CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts (createdAt DESC);
+      CREATE INDEX IF NOT EXISTS idx_posts_author ON posts (author);
+    `
+  },
+  {
+    name: '003_add_users',
+    sql: `
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL CHECK(length(trim(name)) BETWEEN 2 AND 50),
+        email TEXT NOT NULL UNIQUE,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT
+      );
+  `}
 ];

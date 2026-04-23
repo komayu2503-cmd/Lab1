@@ -10,28 +10,20 @@ function getPostValidationDeps() {
   return {
     categoryExists: (category: string) => categoriesRepository.exists(category),
     userExists: (userId: number) => usersRepository.getById(userId) !== undefined,
-    categoriesLabel: categoriesRepository.getAll().join(', ')
+    getCategoriesLabel: () => categoriesRepository.getAll().map(c => c.name).join(', ')
   };
 }
 
 export const postsService = {
   list(input: Record<string, unknown>): ListResponse<PostDto> {
     const query = parsePostListQuery(input);
-    const allItems = postsRepository.getAll(query).map(postToDto);
-    const totalItems = allItems.length;
+    const totalItems = postsRepository.count(query);
     const pageSize = query.limit ?? 5;
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-    const page = Math.min(query.page ?? 1, totalPages);
-    const startIndex = (page - 1) * pageSize;
-    const items = allItems.slice(startIndex, startIndex + pageSize);
+    const page = Math.min(Math.max(1, query.page ?? 1), totalPages);
+    const items = postsRepository.getAll({ ...query, page, limit: pageSize }).map(postToDto);
 
-    return {
-      items,
-      totalItems,
-      totalPages,
-      page,
-      pageSize
-    };
+    return { items, totalItems, totalPages, page, pageSize };
   },
 
   getById(id: string): PostDto {
@@ -55,10 +47,6 @@ export const postsService = {
   },
 
   update(id: string, input: unknown): PostDto {
-    if (!postsRepository.getById(id)) {
-      throw errNotFound('Post not found');
-    }
-
     const validation = validateUpdatePostDto(input, getPostValidationDeps());
 
     if (validation.details.length > 0 || !validation.value) {
@@ -78,5 +66,9 @@ export const postsService = {
     if (!postsRepository.delete(id)) {
       throw errNotFound('Post not found');
     }
+  },
+
+  stats(): { category: string; postCount: number; latestPost: string | null }[] {
+    return postsRepository.getStats();
   }
 };

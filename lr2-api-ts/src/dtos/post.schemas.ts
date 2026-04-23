@@ -4,7 +4,7 @@ import { countWords, isValidEmail } from "../utils/validators.js";
 type PostValidationDeps = {
   categoryExists: (category: string) => boolean;
   userExists: (userId: number) => boolean;
-  categoriesLabel: string;
+  getCategoriesLabel: () => string;
 };
 
 export function parsePostListQuery(input: Record<string, unknown>): PostListQuery {
@@ -51,7 +51,7 @@ export function parsePostListQuery(input: Record<string, unknown>): PostListQuer
       query.limit = Math.min(parsedLimit, 100);
     }
   }
- 
+
   return query;
 }
 
@@ -69,7 +69,7 @@ export function validateCreatePostDto(input: unknown, deps: PostValidationDeps):
   }
 
   if (typeof category !== 'string' || !deps.categoryExists(category)) {
-    details.push({ field: 'category', message: `category must be one of: ${deps.categoriesLabel}` });
+    details.push({ field: 'category', message: `category must be one of: ${deps.getCategoriesLabel()}` });
   }
 
   if (typeof text !== 'string' || countWords(text) === 0 || countWords(text) > 200) {
@@ -118,7 +118,7 @@ export function validateUpdatePostDto(input: unknown, deps: PostValidationDeps):
 
   if (body.category !== undefined) {
     if (typeof body.category !== 'string' || !deps.categoryExists(body.category)) {
-      details.push({ field: 'category', message: `category must be one of: ${deps.categoriesLabel}` });
+      details.push({ field: 'category', message: `category must be one of: ${deps.getCategoriesLabel()}` });
     } else {
       nextValue.category = body.category;
     }
