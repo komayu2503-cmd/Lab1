@@ -1,6 +1,6 @@
 import { all, get, run, sqlNullableNumber, sqlString } from "../db/client.js";
 import { categoriesRepository } from "./categories.repository.js";
-import type { Post, PostListQuery } from "../types.js";
+import type { CreatePostDto, Post, PostListQuery, UpdatePostDto } from "../types.js";
 
 type PostRow = {
   id: string;
@@ -122,7 +122,7 @@ export const postsRepository = {
     return row ? mapRow(row) : undefined;
   },
 
-  create(input: { title: string; category: string; text: string; author: string; userId: number | null }): Post {
+  create(input: CreatePostDto): Post {
     const category = categoriesRepository.getByName(input.category)!;
     const now = new Date().toISOString();
     const postId = `post-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -143,7 +143,7 @@ export const postsRepository = {
     return this.getById(postId)!;
   },
 
-  update(id: string, input: { title?: string; category?: string; text?: string; author?: string; userId?: number | null }): Post | undefined {
+  update(id: string, input: UpdatePostDto): Post | undefined {
     const current = get<PostRow>(selectBaseSql(`WHERE p.id = ${sqlString(id)}`));
 
     if (!current) {

@@ -2,5 +2,10 @@
     "workbench.colorTheme": "bac375a4-abb3-44d5-9bef-8039eb83fec0",
     "workbench.iconTheme": "vs-seti",
     "workbench.editor.decorations.colors": true,
-    "workbench.preferredHighContrastColorTheme": "Dark Modern"
+    "workbench.preferredHighContrastColorTheme": "Dark Modern",
+    "liveServer.settings.ignoreFiles": [
+        ".vscode/**",
+        "**/*.scss",
+        "lr2-api-ts/**"
+    ]
 }

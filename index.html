@@ -7,11 +7,12 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<link rel="stylesheet" href="./style.css" />
 	<title>javascript-training-app</title>
-	<script defer src="./app.js"></script>
+	<script type="module" src="./dist/main.js"></script>
 </head>
 
 <body>
 
+	<div id="notice" hidden class="notice"></div>
 	<div class="posts-container">
 		<h2>Публікація постів</h2>
 		<div class="post-form">
@@ -56,8 +57,14 @@
 				</div>
 
 				<div class="form-actions">
-					<button type="button" id="saveBtn" class="primary">Зберегти</button>
-					<button type="button" id="clearBtn">Очистити</button>
+					<button type="button" id="saveBtn" class="btn-with-loader primary">
+						<span class="btn-text">Зберегти</span>
+						<span class="loader" hidden></span>
+					</button>
+					<button type="button" id="clearBtn" class="btn-with-loader">
+						<span class="btn-text">Очистити</span>
+						<span class="loader" hidden></span>
+					</button>
 				</div>
 			</form>
 		</div>

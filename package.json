@@ -12,10 +12,12 @@
   },
   "license": "ISC",
   "author": "Kiwi",
-  "type": "commonjs",
   "main": "app.js",
-  "scripts": {},
-  "dependencies": {
-    "cors": "^2.8.6"
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
   }
 }
