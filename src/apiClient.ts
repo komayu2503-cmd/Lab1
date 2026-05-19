@@ -1,14 +1,58 @@
 import { API_BASE_URL, REQUEST_TIMEOUT_MS } from './config.js';
 import type {
   ApiErrorBody,
+  AuthResponseDto,
   CategoryDto,
   CreatePostDto,
+  LoginDto,
   ListResponse,
   PostDto,
+  RegisterDto,
   UpdatePostDto,
   UserDto,
 } from './dtos.js';
 import { ApiError } from './dtos.js';
+
+const TOKEN_STORAGE_KEY = 'lab5.jwtToken';
+const USER_STORAGE_KEY = 'lab5.currentUser';
+
+export function getAuthToken(): string | null {
+  return localStorage.getItem(TOKEN_STORAGE_KEY);
+}
+
+export function setAuthToken(token: string): void {
+  localStorage.setItem(TOKEN_STORAGE_KEY, token);
+}
+
+export function clearAuthToken(): void {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+}
+
+export function getCurrentUser(): UserDto | null {
+  const raw = localStorage.getItem(USER_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw) as UserDto;
+  } catch {
+    return null;
+  }
+}
+
+export function setCurrentUser(user: UserDto): void {
+  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+}
+
+export function clearCurrentUser(): void {
+  localStorage.removeItem(USER_STORAGE_KEY);
+}
+
+export function clearAuthState(): void {
+  clearAuthToken();
+  clearCurrentUser();
+  window.dispatchEvent(new Event('auth-state-changed')); 
+}
 
 // ─── Core request ─────────────────────────────────────────────────────────────
 
@@ -22,6 +66,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
+  const token = getAuthToken();
+  const currentUser = getCurrentUser();
+
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
@@ -29,6 +76,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(currentUser?.id ? { 'X-Demo-UserId': String(currentUser.id) } : {}),
         ...(options.headers ?? {}),
       },
     });
@@ -62,6 +111,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const code = body?.error?.code ?? 'UNKNOWN';
     const message = body?.error?.message ?? `HTTP ${response.status}`;
     const details = body?.error?.details ?? [];
+
+    if (response.status === 401 && token) {
+      clearAuthState();
+    }
+
     throw new ApiError(response.status, code, message, details);
   }
 
@@ -111,4 +165,32 @@ export function getUsers(): Promise<ListResponse<UserDto>> {
 
 export function getCategories(): Promise<ListResponse<CategoryDto>> {
   return request<ListResponse<CategoryDto>>('/categories');
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+export async function register(data: RegisterDto): Promise<AuthResponseDto> {
+  const result = await request<AuthResponseDto>('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+  setAuthToken(result.token);
+  setCurrentUser(result.user);
+  return result;
+}
+
+export async function login(data: LoginDto): Promise<AuthResponseDto> {
+  const result = await request<AuthResponseDto>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+  setAuthToken(result.token);
+  setCurrentUser(result.user);
+  return result;
+}
+
+export function logout(): void {
+  clearAuthState();
 }

@@ -35,8 +35,9 @@ export function exec(sql: string): void {
   ensureDatabase().exec(sql);
 }
 
-export function run(sql: string): { changes: number; lastInsertRowid: number } {
-  const result = ensureDatabase().prepare(sql).run();
+export function run(sql: string, params?: unknown[]): { changes: number; lastInsertRowid: number } {
+  const stmt = ensureDatabase().prepare(sql);
+  const result = params ? stmt.run(...params) : stmt.run();
 
   return {
     changes: result.changes,
@@ -44,12 +45,14 @@ export function run(sql: string): { changes: number; lastInsertRowid: number } {
   };
 }
 
-export function get<T>(sql: string): T | undefined {
-  return ensureDatabase().prepare(sql).get() as T | undefined;
+export function get<T>(sql: string, params?: unknown[]): T | undefined {
+  const stmt = ensureDatabase().prepare(sql);
+  return (params ? stmt.get(...params) : stmt.get()) as T | undefined;
 }
 
-export function all<T>(sql: string): T[] {
-  return ensureDatabase().prepare(sql).all() as T[];
+export function all<T>(sql: string, params?: unknown[]): T[] {
+  const stmt = ensureDatabase().prepare(sql);
+  return (params ? stmt.all(...params) : stmt.all()) as T[];
 }
 
 export function sqlString(value: string): string {

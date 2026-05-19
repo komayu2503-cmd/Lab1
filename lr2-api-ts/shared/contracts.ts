@@ -4,7 +4,9 @@ export type ApiErrorCode =
   | 'VALIDATION_ERROR'
   | 'NOT_FOUND'
   | 'INTERNAL_ERROR'
-  | 'CONFLICT';
+  | 'CONFLICT'
+  | 'FORBIDDEN'
+  | 'UNAUTHORIZED';
 
 export type ErrorResponse = {
   error: {
@@ -78,4 +80,20 @@ export type UpdatePostDto = {
   text?: string;
   author?: string;
   userId?: number | null;
+};
+
+export type RegisterDto = {
+  name: string;
+  email: string;
+  password: string;
+};
+
+export type LoginDto = {
+  email: string;
+  password: string;
+};
+
+export type AuthResponseDto = {
+  token: string;
+  user: UserDto;
 };

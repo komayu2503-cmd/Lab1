@@ -31,22 +31,34 @@ export function formatDate(iso: string): string {
 /**
  * Replaces the table body content with a single-row status cell.
  * Used to show loading spinner, empty state, or error message.
+ * 
+ * SECURITY FIX: Using DOM API instead of innerHTML to prevent XSS.
  */
 export function setListStatus(
   tbodyEl: HTMLTableSectionElement,
   status: 'loading' | 'empty' | 'error',
   message = '',
 ): void {
-  const colSpan = 6;
-  let content: string;
+  tbodyEl.innerHTML = '';
+  const tr = document.createElement('tr');
+  const td = document.createElement('td');
+  td.colSpan = 6;
+  td.className = status === 'error' ? 'status-cell status-error' : 'status-cell';
+
   if (status === 'loading') {
-    content = `<td colspan="${colSpan}" class="status-cell">⏳ Завантаження…</td>`;
+    td.textContent = '⏳ Завантаження…';
   } else if (status === 'empty') {
-    content = `<td colspan="${colSpan}" class="status-cell">📭 Постів немає</td>`;
+    td.textContent = '📭 Постів немає';
   } else {
-    content = `<td colspan="${colSpan}" class="status-cell status-error">❌ ${escapeHtml(message)}</td>`;
+    // For error status, use textContent to prevent XSS
+    const icon = document.createTextNode('❌ ');
+    const msgNode = document.createTextNode(message);
+    td.appendChild(icon);
+    td.appendChild(msgNode);
   }
-  tbodyEl.innerHTML = `<tr>${content}</tr>`;
+
+  tr.appendChild(td);
+  tbodyEl.appendChild(tr);
 }
 
 // ─── Posts table ─────────────────────────────────────────────────────────────
@@ -60,25 +72,67 @@ export function renderPosts(
   tbodyEl.innerHTML = '';
   posts.forEach((post) => {
     const tr = document.createElement('tr');
-    const shortText =
-      post.text.length > 200 ? post.text.slice(0, 200) + '…' : post.text;
-    tr.innerHTML = `
-      <td>${escapeHtml(post.title)}</td>
-      <td>${escapeHtml(post.category)}</td>
-      <td>${escapeHtml(shortText)}</td>
-      <td>${escapeHtml(post.author)}</td>
-      <td>${escapeHtml(formatDate(post.createdAt))}</td>
-      <td>
-        <button data-action="edit" class="btn-with-loader" data-id="${escapeHtml(post.id)}">
-            <span class="btn-text">Редагувати</span>
-            <span class="loader" hidden></span>
-        </button>
-        <button data-action="delete" class="btn-with-loader" data-id="${escapeHtml(post.id)}">
-            <span class="btn-text">Видалити</span>
-            <span class="loader" hidden></span>
-        </button>
-      </td>
-    `;
+    const shortText = post.text.length > 200 ? post.text.slice(0, 200) + '…' : post.text;
+
+    // Create cells using DOM API for security
+    // Cell 1: Title
+    const tdTitle = document.createElement('td');
+    tdTitle.textContent = post.title;
+    tr.appendChild(tdTitle);
+
+    // Cell 2: Category
+    const tdCategory = document.createElement('td');
+    tdCategory.textContent = post.category;
+    tr.appendChild(tdCategory);
+
+    // Cell 3: Short text
+    const tdText = document.createElement('td');
+    tdText.textContent = shortText;
+    tr.appendChild(tdText);
+
+    // Cell 4: Author
+    const tdAuthor = document.createElement('td');
+    tdAuthor.textContent = post.author;
+    tr.appendChild(tdAuthor);
+
+    // Cell 5: Date
+    const tdDate = document.createElement('td');
+    tdDate.textContent = formatDate(post.createdAt);
+    tr.appendChild(tdDate);
+
+    // Cell 6: Actions
+    const tdActions = document.createElement('td');
+    
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn-with-loader';
+    editBtn.dataset.action = 'edit';
+    editBtn.dataset.id = post.id;
+    const editSpan = document.createElement('span');
+    editSpan.className = 'btn-text';
+    editSpan.textContent = 'Редагувати';
+    const editLoader = document.createElement('span');
+    editLoader.className = 'loader';
+    editLoader.hidden = true;
+    editBtn.appendChild(editSpan);
+    editBtn.appendChild(editLoader);
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'btn-with-loader';
+    deleteBtn.dataset.action = 'delete';
+    deleteBtn.dataset.id = post.id;
+    const deleteSpan = document.createElement('span');
+    deleteSpan.className = 'btn-text';
+    deleteSpan.textContent = 'Видалити';
+    const deleteLoader = document.createElement('span');
+    deleteLoader.className = 'loader';
+    deleteLoader.hidden = true;
+    deleteBtn.appendChild(deleteSpan);
+    deleteBtn.appendChild(deleteLoader);
+    
+    tdActions.appendChild(editBtn);
+    tdActions.appendChild(deleteBtn);
+    tr.appendChild(tdActions);
+
     tbodyEl.appendChild(tr);
   });
 

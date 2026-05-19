@@ -11,27 +11,13 @@ export type Post = {
   id: string;
   title: string;
   category: string;
+  categoryId?: number;
   text: string;
   author: string;
   userId: number | null;
   createdAt: string;
   updatedAt?: string;
 };
-export type {
-  ApiErrorCode,
-  CategoryDto,
-  CreateCategoryDto,
-  CreatePostDto,
-  CreateUserDto,
-  Detail,
-  ErrorResponse,
-  ListResponse,
-  PostDto,
-  UpdateCategoryDto,
-  UpdatePostDto,
-  UpdateUserDto,
-  UserDto,
-} from "../shared/contracts.js";
 
 export type PostListQuery = {
   q?: string;
@@ -43,3 +29,28 @@ export type PostListQuery = {
   page?: number;
   limit?: number;
 };
+
+export type AppData = {
+  users: User[];
+  categories: string[];
+  posts: Post[];
+};
+
+export type {
+  ApiErrorCode,
+  AuthResponseDto,
+  CategoryDto,
+  CreateCategoryDto,
+  CreatePostDto,
+  CreateUserDto,
+  Detail,
+  ErrorResponse,
+  ListResponse,
+  LoginDto,
+  PostDto,
+  RegisterDto,
+  UpdateCategoryDto,
+  UpdatePostDto,
+  UpdateUserDto,
+  UserDto,
+} from "../shared/contracts.js";

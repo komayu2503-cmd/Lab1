@@ -43,5 +43,12 @@ export const migrations: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts (createdAt DESC);
       CREATE INDEX IF NOT EXISTS idx_posts_author ON posts (author);
     `
+  },
+  {
+    name: '004_add_auth_fields',
+    sql: `
+      ALTER TABLE users ADD COLUMN passwordHash TEXT;
+      ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('user', 'admin'));
+    `
   }
 ];

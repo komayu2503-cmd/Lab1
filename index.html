@@ -14,18 +14,72 @@
 
 	<div id="notice" hidden class="notice"></div>
 	<div class="posts-container">
+		<section class="auth-section">
+			<h2>Аутентифікація</h2>
+
+			<div id="loginFormBlock">
+				<div class="auth-grid">
+					<div class="form-group">
+						<label for="authEmail">Email</label>
+						<input type="email" id="authEmail" placeholder="you@example.com" />
+						<span class="error-message" id="authEmailError"></span>
+					</div>
+					<div class="form-group">
+						<label for="authPassword">Пароль</label>
+						<input type="password" id="authPassword" placeholder="мінімум 8 символів" />
+						<span class="error-message" id="authPasswordError"></span>
+					</div>
+				</div>
+				<div class="form-actions">
+					<button type="button" id="loginBtn" class="btn-with-loader primary">
+						<span class="btn-text">Увійти</span>
+						<span class="loader" hidden></span>
+					</button>
+				</div>
+			</div>
+
+			<div id="logoutBlock" hidden>
+				<div class="form-actions">
+					<button type="button" id="logoutBtn" class="btn-with-loader">
+						<span class="btn-text">Вийти</span>
+						<span class="loader" hidden></span>
+					</button>
+				</div>
+			</div>
+
+			<div id="registerBlock" hidden>
+				<div class="form-group">
+					<label for="authName">Ім'я (для реєстрації)</label>
+					<input type="text" id="authName" placeholder="Ваше ім'я" />
+					<span class="error-message" id="authNameError"></span>
+				</div>
+				<div class="form-actions">
+					<button type="button" id="registerBtn" class="btn-with-loader primary">
+						<span class="btn-text">Реєстрація</span>
+						<span class="loader" hidden></span>
+					</button>
+				</div>
+			</div>
+
+			<p id="authStatus">Ви не авторизовані</p>
+		</section>
+
+		<div id="protectedContent">
+
+		<section class="users-container">
+			<h2>Користувачі</h2>
+			<div class="users-list-wrap">
+				<h3>Список юзерів</h3>
+				<ul id="usersList" class="users-list"></ul>
+			</div>
+		</section>
+
 		<h2>Публікація постів</h2>
 		<div class="post-form">
 			<form id="postForm">
 				<input type="hidden" id="postId" />
 
-				<div class="form-group user-select-group">
-					<label for="userSelect">Користувач</label>
-					<select id="userSelect">
-						<option value="">-- оберіть юзера --</option>
-					</select>
-					<span class="error-message" id="userSelectError"></span>
-				</div>
+				<p class="author-display">Автор: <strong id="currentAuthor">не авторизований</strong></p>
 
 				<div class="form-group">
 					<label for="title">Заголовок</label>
@@ -48,12 +102,6 @@
 						<span class="error-message" id="textError"></span>
 						<span id="wordCount">0/200 слів</span>
 					</div>
-				</div>
-
-				<div class="form-group">
-					<label for="author">Автор (email)</label>
-					<input type="email" id="author" name="author" required />
-					<span class="error-message" id="authorError"></span>
 				</div>
 
 				<div class="form-actions">
@@ -91,6 +139,7 @@
 			<select id="pageSelect"></select>
 			<span id="paginationSummary"></span>
 			<button type="button" id="nextPageBtn">Наступна</button>
+		</div>
 		</div>
 	</div>
 

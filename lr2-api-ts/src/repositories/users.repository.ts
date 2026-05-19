@@ -1,4 +1,4 @@
-import { all, get, getDb, run, sqlString } from "../db/client.js";
+import { all, get, getDb, run } from "../db/client.js";
 import type { User } from "../types.js";
 
 export const usersRepository = {
@@ -11,27 +11,39 @@ export const usersRepository = {
   },
 
   getById(id: number): User | undefined {
-    return get<User>(`
+    return get<User>(
+      `
       SELECT id, name, email
       FROM users
-      WHERE id = ${Number(id)};
-    `);
+      WHERE id = ?;
+    `,
+      [id]
+    );
   },
 
   emailExists(email: string, excludeId?: number): boolean {
-    const sql = excludeId === undefined
-      ? `SELECT id FROM users WHERE lower(email) = lower(${sqlString(email.trim())}) LIMIT 1;`
-      : `SELECT id FROM users WHERE lower(email) = lower(${sqlString(email.trim())}) AND id != ${Number(excludeId)} LIMIT 1;`;
-
-    return get<{ id: number }>(sql) !== undefined;
+    const trimmedEmail = email.trim();
+    if (excludeId === undefined) {
+      return get<{ id: number }>(
+        `SELECT id FROM users WHERE lower(email) = lower(?) LIMIT 1;`,
+        [trimmedEmail]
+      ) !== undefined;
+    }
+    return get<{ id: number }>(
+      `SELECT id FROM users WHERE lower(email) = lower(?) AND id != ? LIMIT 1;`,
+      [trimmedEmail, excludeId]
+    ) !== undefined;
   },
 
   create(input: { name: string; email: string }): User {
     const now = new Date().toISOString();
-    const result = run(`
+    const result = run(
+      `
       INSERT INTO users (name, email, createdAt)
-      VALUES (${sqlString(input.name.trim())}, ${sqlString(input.email.trim())}, ${sqlString(now)});
-    `);
+      VALUES (?, ?, ?);
+    `,
+      [input.name.trim(), input.email.trim(), now]
+    );
 
     return this.getById(result.lastInsertRowid)!;
   },
@@ -47,11 +59,14 @@ export const usersRepository = {
     const nextEmail = input.email ?? user.email;
     const now = new Date().toISOString();
 
-    run(`
+    run(
+      `
       UPDATE users
-      SET name = ${sqlString(nextName)}, email = ${sqlString(nextEmail)}, updatedAt = ${sqlString(now)}
-      WHERE id = ${Number(id)};
-    `);
+      SET name = ?, email = ?, updatedAt = ?
+      WHERE id = ?;
+    `,
+      [nextName, nextEmail, now, id]
+    );
 
     return this.getById(id);
   },
@@ -61,8 +76,12 @@ export const usersRepository = {
     let deleted = false;
 
     const transaction = db.transaction(() => {
-      run(`UPDATE posts SET userId = NULL, updatedAt = ${sqlString(new Date().toISOString())} WHERE userId = ${Number(id)};`);
-      const result = run(`DELETE FROM users WHERE id = ${Number(id)};`);
+      const now = new Date().toISOString();
+      run(
+        `UPDATE posts SET userId = NULL, updatedAt = ? WHERE userId = ?;`,
+        [now, id]
+      );
+      const result = run(`DELETE FROM users WHERE id = ?;`, [id]);
       deleted = result.changes > 0;
     });
 

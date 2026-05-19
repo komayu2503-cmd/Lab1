@@ -118,10 +118,24 @@ body {
     color: #fff;
 }
 
+/* Disabled save button state */
+#saveBtn:disabled {
+    background: linear-gradient(135deg, #5f6b84, #46506a);
+    color: #d3d7e0;
+    cursor: not-allowed;
+    opacity: 0.75;
+    box-shadow: none;
+}
+
 /* Hover */
 .form-actions button:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 18px rgba(0,0,0,0.4);
+}
+
+.form-actions button:disabled:hover {
+    transform: none;
+    box-shadow: none;
 }
 
 /* Table */
@@ -196,6 +210,27 @@ body {
     opacity: 0.4;
 }
 
+.auth-section,
+.notes-section {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.auth-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+}
+
+#authStatus {
+    margin-top: 0.75rem;
+    color: #ffd9cc;
+    font-weight: 600;
+}
+
 /* Error text */
 .error-message {
     color: #ff4d4d;
@@ -216,10 +251,15 @@ body {
 }
 
 .notice { 
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
     padding: 10px 16px; 
-    border-radius: 10px; 
-    margin-bottom: 12px; 
-    font-weight: 500; 
+    border-radius: 0;
+    margin-bottom: 0;
+    font-weight: 500;
+    z-index: 1000;
 }
 .notice-success { 
     background: #d4edda; 
@@ -248,4 +288,59 @@ body {
     to {
         transform: rotate(360deg);
     }
+}
+
+/* ─── Users section ───────────────────────────────────────────────────────── */
+
+.users-container {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.users-list-wrap {
+    margin-top: 0.8rem;
+}
+
+.users-list {
+    margin: 0;
+    padding-left: 1rem;
+    max-height: 11.5rem;
+    overflow-y: auto;
+    padding-right: 0.35rem;
+}
+
+.users-list-status {
+    color: #ffa586;
+    font-style: italic;
+    list-style: none;
+    padding-left: 0;
+    text-align: left;
+    margin: 0.5rem 0;
+}
+
+.users-list-error {
+    color: #ff4d4d;
+    font-style: normal;
+    font-weight: 500;
+}
+
+.users-list li {
+    margin: 0.25rem 0;
+    line-height: 1.9;
+}
+
+.users-list li span {
+    color: #ffd6c8;
+}
+
+.users-list-empty {
+    list-style: none;
+    padding-left: 0;
+    color: #ffd6c8;
+}
+
+.author-display {
+    margin: 0.4rem 0 0.8rem;
+    color: #ffd9cc;
 }

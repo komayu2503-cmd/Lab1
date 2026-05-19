@@ -1,71 +1,92 @@
 import { initDb } from "./initDb.js";
-import { run, sqlNullableNumber, sqlString } from "./client.js";
+import { run } from "./client.js";
+import bcrypt from "bcryptjs";
 
 function seedUsers(): void {
   const now = new Date().toISOString();
+  const passwordHash = bcrypt.hashSync("11111111", 10);
 
-  run(`
-    INSERT OR IGNORE INTO users (name, email, createdAt)
-    VALUES ('Alice', 'alice@example.com', ${sqlString(now)});
-  `);
-  run(`
-    INSERT OR IGNORE INTO users (name, email, createdAt)
-    VALUES ('Bob', 'bob@example.com', ${sqlString(now)});
-  `);
-  run(`
-    INSERT OR IGNORE INTO users (name, email, createdAt)
-    VALUES ('Charlie', 'charlie@example.com', ${sqlString(now)});
-  `);
+  run(
+    `INSERT OR IGNORE INTO users (name, email, passwordHash, role, createdAt) VALUES (?, ?, ?, ?, ?);`,
+    ['Alice', 'alice@example.com', passwordHash, 'user', now]
+  );
+  run(
+    `INSERT OR IGNORE INTO users (name, email, passwordHash, role, createdAt) VALUES (?, ?, ?, ?, ?);`,
+    ['Bob', 'bob@example.com', passwordHash, 'user', now]
+  );
+  run(
+    `INSERT OR IGNORE INTO users (name, email, passwordHash, role, createdAt) VALUES (?, ?, ?, ?, ?);`,
+    ['Charlie', 'charlie@example.com', passwordHash, 'user', now]
+  );
+
+  // Backfill password hash for existing users in already initialized DBs.
+  run(`UPDATE users SET passwordHash = ?, role = COALESCE(role, 'user') WHERE passwordHash IS NULL;`, [
+    passwordHash,
+  ]);
+
+  // Ensure seeded default users always keep the expected demo password.
+  run(
+    `UPDATE users
+     SET passwordHash = ?, role = COALESCE(role, 'user')
+     WHERE email IN ('alice@example.com', 'bob@example.com', 'charlie@example.com');`,
+    [passwordHash]
+  );
 }
 
 function seedCategories(): void {
   const now = new Date().toISOString();
 
-  run(`
-    INSERT OR IGNORE INTO categories (name, createdAt)
-    VALUES ('News', ${sqlString(now)});
-  `);
-  run(`
-    INSERT OR IGNORE INTO categories (name, createdAt)
-    VALUES ('Tutorial', ${sqlString(now)});
-  `);
-  run(`
-    INSERT OR IGNORE INTO categories (name, createdAt)
-    VALUES ('Opinion', ${sqlString(now)});
-  `);
-  run(`
-    INSERT OR IGNORE INTO categories (name, createdAt)
-    VALUES ('Announcement', ${sqlString(now)});
-  `);
+  run(
+    `INSERT OR IGNORE INTO categories (name, createdAt) VALUES (?, ?);`,
+    ['News', now]
+  );
+  run(
+    `INSERT OR IGNORE INTO categories (name, createdAt) VALUES (?, ?);`,
+    ['Tutorial', now]
+  );
+  run(
+    `INSERT OR IGNORE INTO categories (name, createdAt) VALUES (?, ?);`,
+    ['Opinion', now]
+  );
+  run(
+    `INSERT OR IGNORE INTO categories (name, createdAt) VALUES (?, ?);`,
+    ['Announcement', now]
+  );
 }
 
 function seedPosts(): void {
   const now = new Date().toISOString();
 
-  run(`
+  run(
+    `
     INSERT OR IGNORE INTO posts (id, title, categoryId, text, author, userId, createdAt)
-    VALUES (
+    VALUES (?, ?, ?, ?, ?, ?, ?);
+  `,
+    [
       'post-1',
       'Getting Started with TypeScript',
       2,
       'TypeScript is a typed superset of JavaScript.',
       'alice@example.com',
-      ${sqlNullableNumber(1)},
-      ${sqlString(now)}
-    );
-  `);
-  run(`
+      1,
+      now
+    ]
+  );
+  run(
+    `
     INSERT OR IGNORE INTO posts (id, title, categoryId, text, author, userId, createdAt)
-    VALUES (
+    VALUES (?, ?, ?, ?, ?, ?, ?);
+  `,
+    [
       'post-2',
       'Weekly Team Update',
       4,
       'Sprint goals were completed and the next milestone is planned.',
       'bob@example.com',
-      ${sqlNullableNumber(2)},
-      ${sqlString(now)}
-    );
-  `);
+      2,
+      now
+    ]
+  );
 }
 
 function seed(): void {

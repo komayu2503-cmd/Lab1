@@ -1,4 +1,4 @@
-import { all, get, run, sqlNullableNumber, sqlString } from "../db/client.js";
+import { all, get, run } from "../db/client.js";
 import { categoriesRepository } from "./categories.repository.js";
 import type { CreatePostDto, Post, PostListQuery, UpdatePostDto } from "../types.js";
 
@@ -19,6 +19,7 @@ function mapRow(row: PostRow): Post {
     id: row.id,
     title: row.title,
     category: row.category,
+    categoryId: row.categoryId,
     text: row.text,
     author: row.author,
     userId: row.userId,
@@ -45,80 +46,106 @@ function getOrderByClause(sortBy?: NonNullable<PostListQuery['sortBy']>, sortOrd
   }
 }
 
-function buildWhereClause(query: PostListQuery): string {
+function buildWhereClause(query: PostListQuery): { sql: string; params: unknown[] } {
   const conditions: string[] = [];
+  const params: unknown[] = [];
 
   if (query.q) {
     const normalizedQuery = query.q.trim().toLowerCase();
+    const searchParam = `%${normalizedQuery}%`;
     conditions.push(`(
-      lower(p.title) LIKE ${sqlString(`%${normalizedQuery}%`)} OR
-      lower(c.name) LIKE ${sqlString(`%${normalizedQuery}%`)} OR
-      lower(p.text) LIKE ${sqlString(`%${normalizedQuery}%`)} OR
-      lower(p.author) LIKE ${sqlString(`%${normalizedQuery}%`)}
+      lower(p.title) LIKE ? OR
+      lower(c.name) LIKE ? OR
+      lower(p.text) LIKE ? OR
+      lower(p.author) LIKE ?
     )`);
+    params.push(searchParam, searchParam, searchParam, searchParam);
   }
 
   if (query.category) {
-    conditions.push(`lower(c.name) = lower(${sqlString(query.category.trim())})`);
+    conditions.push(`lower(c.name) = lower(?)`);
+    params.push(query.category.trim());
   }
 
   if (query.author) {
-    conditions.push(`lower(p.author) LIKE ${sqlString(`%${query.author.trim().toLowerCase()}%`)}`);
+    conditions.push(`lower(p.author) LIKE ?`);
+    params.push(`%${query.author.trim().toLowerCase()}%`);
   }
 
   if (query.userId !== undefined) {
-    conditions.push(`p.userId = ${Number(query.userId)}`);
+    conditions.push(`p.userId = ?`);
+    params.push(Number(query.userId));
   }
 
-  return conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-}
-
-function selectBaseSql(whereClause = '', orderByClause = 'ORDER BY p.createdAt DESC', limitClause = ''): string {
-  return `
-    SELECT
-      p.id,
-      p.title,
-      c.name AS category,
-      p.categoryId,
-      p.text,
-      p.author,
-      p.userId,
-      p.createdAt,
-      p.updatedAt
-    FROM posts p
-    JOIN categories c ON c.id = p.categoryId
-    ${whereClause}
-    ${orderByClause}
-    ${limitClause};
-  `;
+  const sql = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  return { sql, params };
 }
 
 export const postsRepository = {
   count(query: PostListQuery): number {
     type CountRow = { total: number };
-    const whereClause = buildWhereClause(query);
-    const row = get<CountRow>(`
+    const { sql: whereClause, params } = buildWhereClause(query);
+    const row = get<CountRow>(
+      `
       SELECT COUNT(*) AS total
       FROM posts p
       JOIN categories c ON c.id = p.categoryId
       ${whereClause};
-    `);
+    `,
+      params
+    );
     return row?.total ?? 0;
   },
 
   getAll(query: PostListQuery): Post[] {
-    const whereClause = buildWhereClause(query);
+    const { sql: whereClause, params } = buildWhereClause(query);
     const orderByClause = getOrderByClause(query.sortBy, query.sortOrder);
     const pageSize = query.limit ?? 5;
     const page = Math.max(1, query.page ?? 1);
     const offset = (page - 1) * pageSize;
     const limitClause = `LIMIT ${pageSize} OFFSET ${offset}`;
 
-    return all<PostRow>(selectBaseSql(whereClause, orderByClause, limitClause)).map(mapRow);
+    return all<PostRow>(
+      `
+      SELECT
+        p.id,
+        p.title,
+        c.name AS category,
+        p.categoryId,
+        p.text,
+        p.author,
+        p.userId,
+        p.createdAt,
+        p.updatedAt
+      FROM posts p
+      JOIN categories c ON c.id = p.categoryId
+      ${whereClause}
+      ${orderByClause}
+      ${limitClause};
+    `,
+      params
+    ).map(mapRow);
   },
 
   getById(id: string): Post | undefined {
-    const row = get<PostRow>(selectBaseSql(`WHERE p.id = ${sqlString(id)}`));
+    const row = get<PostRow>(
+      `
+      SELECT
+        p.id,
+        p.title,
+        c.name AS category,
+        p.categoryId,
+        p.text,
+        p.author,
+        p.userId,
+        p.createdAt,
+        p.updatedAt
+      FROM posts p
+      JOIN categories c ON c.id = p.categoryId
+      WHERE p.id = ?;
+    `,
+      [id]
+    );
     return row ? mapRow(row) : undefined;
   },
 
@@ -127,24 +154,19 @@ export const postsRepository = {
     const now = new Date().toISOString();
     const postId = `post-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-    run(`
+    run(
+      `
       INSERT INTO posts (id, title, categoryId, text, author, userId, createdAt)
-      VALUES (
-        ${sqlString(postId)},
-        ${sqlString(input.title)},
-        ${Number(category.id)},
-        ${sqlString(input.text)},
-        ${sqlString(input.author)},
-        ${sqlNullableNumber(input.userId)},
-        ${sqlString(now)}
-      );
-    `);
+      VALUES (?, ?, ?, ?, ?, ?, ?);
+    `,
+      [postId, input.title, category.id, input.text, input.author, input.userId ?? null, now]
+    );
 
     return this.getById(postId)!;
   },
 
   update(id: string, input: UpdatePostDto): Post | undefined {
-    const current = get<PostRow>(selectBaseSql(`WHERE p.id = ${sqlString(id)}`));
+    const current = this.getById(id);
 
     if (!current) {
       return undefined;
@@ -156,23 +178,34 @@ export const postsRepository = {
     const nextUserId = input.userId !== undefined ? input.userId : current.userId;
     const now = new Date().toISOString();
 
-    run(`
+    run(
+      `
       UPDATE posts
       SET
-        title = ${sqlString(input.title ?? current.title)},
-        categoryId = ${Number(nextCategoryId)},
-        text = ${sqlString(input.text ?? current.text)},
-        author = ${sqlString(input.author ?? current.author)},
-        userId = ${sqlNullableNumber(nextUserId)},
-        updatedAt = ${sqlString(now)}
-      WHERE id = ${sqlString(id)};
-    `);
+        title = ?,
+        categoryId = ?,
+        text = ?,
+        author = ?,
+        userId = ?,
+        updatedAt = ?
+      WHERE id = ?;
+    `,
+      [
+        input.title ?? current.title,
+        nextCategoryId,
+        input.text ?? current.text,
+        input.author ?? current.author,
+        nextUserId ?? null,
+        now,
+        id
+      ]
+    );
 
     return this.getById(id);
   },
 
   delete(id: string): boolean {
-    return run(`DELETE FROM posts WHERE id = ${sqlString(id)};`).changes > 0;
+    return run(`DELETE FROM posts WHERE id = ?;`, [id]).changes > 0;
   },
 
   getStats(): { category: string; postCount: number; latestPost: string | null }[] {

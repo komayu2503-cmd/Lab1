@@ -1,4 +1,4 @@
-import { errNotFound, errValidation } from "../errors.js";
+import { errNotFound, errValidation, errForbidden, errUnauthorized } from "../errors.js";
 import { postToDto } from "../mappers.js";
 import { parsePostListQuery, validateCreatePostDto, validateUpdatePostDto } from "../dtos/post.schemas.js";
 import { categoriesRepository } from "../repositories/categories.repository.js";
@@ -36,22 +36,49 @@ export const postsService = {
     return postToDto(post);
   },
 
-  create(input: unknown): PostDto {
+  create(input: unknown, currentUserId: number): PostDto {
     const validation = validateCreatePostDto(input, getPostValidationDeps());
 
     if (validation.details.length > 0 || !validation.value) {
       throw errValidation(validation.details);
     }
 
+    const currentUser = usersRepository.getById(currentUserId);
+    if (!currentUser) {
+      throw errUnauthorized('User not authenticated');
+    }
+
+    validation.value.author = currentUser.email;
+    validation.value.userId = currentUserId;
+
     return postToDto(postsRepository.create(validation.value));
   },
 
-  update(id: string, input: unknown): PostDto {
+  update(id: string, input: unknown, currentUserId: number): PostDto {
+    const post = postsRepository.getById(id);
+
+    if (!post) {
+      throw errNotFound('Post not found');
+    }
+
+    // IDOR protection: Only owner or user with null userId can update
+    if (post.userId !== null && post.userId !== currentUserId) {
+      throw errForbidden('Access denied: you can only update your own posts');
+    }
+
     const validation = validateUpdatePostDto(input, getPostValidationDeps());
 
     if (validation.details.length > 0 || !validation.value) {
       throw errValidation(validation.details);
     }
+
+    const currentUser = usersRepository.getById(currentUserId);
+    if (!currentUser) {
+      throw errUnauthorized('User not authenticated');
+    }
+
+    validation.value.author = currentUser.email;
+    validation.value.userId = currentUserId;
 
     const updated = postsRepository.update(id, validation.value);
 
@@ -62,7 +89,18 @@ export const postsService = {
     return postToDto(updated);
   },
 
-  delete(id: string): void {
+  delete(id: string, currentUserId: number): void {
+    const post = postsRepository.getById(id);
+
+    if (!post) {
+      throw errNotFound('Post not found');
+    }
+
+    // IDOR protection: Only owner or user with null userId can delete
+    if (post.userId !== null && post.userId !== currentUserId) {
+      throw errForbidden('Access denied: you can only delete your own posts');
+    }
+
     if (!postsRepository.delete(id)) {
       throw errNotFound('Post not found');
     }

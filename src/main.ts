@@ -1,10 +1,15 @@
 import {
+  clearAuthState,
   createPost,
   deletePost,
-  getPostById,
   getCategories,
+  getCurrentUser,
+  getPostById,
   getPosts,
   getUsers,
+  login,
+  logout,
+  register,
   updatePost,
 } from './apiClient.js';
 import type { CategoryDto, CreatePostDto, PostDto, UserDto } from './dtos.js';
@@ -15,7 +20,6 @@ import {
   renderCategoryOptions,
   renderPagination,
   renderPosts,
-  renderUserOptions,
   setFormEnabled,
   setListStatus,
   showFieldErrors,
@@ -23,34 +27,39 @@ import {
   toggleButtonLoader,
 } from './ui.js';
 
-// ─── DOM refs ─────────────────────────────────────────────────────────────────
-
-const postsTableBody = document.querySelector<HTMLTableSectionElement>(
-  '#postsTable tbody',
-)!;
+const postsTableBody = document.querySelector<HTMLTableSectionElement>('#postsTable tbody')!;
 const postForm = document.querySelector<HTMLFormElement>('#postForm')!;
 const postIdEl = document.querySelector<HTMLInputElement>('#postId')!;
 const titleEl = document.querySelector<HTMLInputElement>('#title')!;
 const categoryEl = document.querySelector<HTMLSelectElement>('#category')!;
 const textEl = document.querySelector<HTMLTextAreaElement>('#text')!;
-const authorEl = document.querySelector<HTMLInputElement>('#author')!;
-const userSelectEl = document.querySelector<HTMLSelectElement>('#userSelect')!;
+const currentAuthorEl = document.querySelector<HTMLElement>('#currentAuthor')!;
 const saveBtn = document.querySelector<HTMLButtonElement>('#saveBtn')!;
 const clearBtn = document.querySelector<HTMLButtonElement>('#clearBtn')!;
 const wordCountEl = document.querySelector<HTMLElement>('#wordCount')!;
 const noticeEl = document.querySelector<HTMLElement>('#notice')!;
-const sortDirectionIconEl =
-  document.querySelector<HTMLElement>('#sortDirectionIcon');
+const sortDirectionIconEl = document.querySelector<HTMLElement>('#sortDirectionIcon');
 const pageSelectEl = document.querySelector<HTMLSelectElement>('#pageSelect');
-const paginationSummaryEl =
-  document.querySelector<HTMLElement>('#paginationSummary');
+const paginationSummaryEl = document.querySelector<HTMLElement>('#paginationSummary');
 const prevPageBtn = document.querySelector<HTMLButtonElement>('#prevPageBtn');
 const nextPageBtn = document.querySelector<HTMLButtonElement>('#nextPageBtn');
-
-// ─── State ────────────────────────────────────────────────────────────────────
+const usersListEl = document.querySelector<HTMLUListElement>('#usersList')!;
+const authNameEl = document.querySelector<HTMLInputElement>('#authName')!;
+const authEmailEl = document.querySelector<HTMLInputElement>('#authEmail')!;
+const authPasswordEl = document.querySelector<HTMLInputElement>('#authPassword')!;
+const registerBtn = document.querySelector<HTMLButtonElement>('#registerBtn')!;
+const loginBtn = document.querySelector<HTMLButtonElement>('#loginBtn')!;
+const logoutBtn = document.querySelector<HTMLButtonElement>('#logoutBtn')!;
+const authStatusEl = document.querySelector<HTMLElement>('#authStatus')!;
+const loginFormBlockEl = document.querySelector<HTMLElement>('#loginFormBlock')!;
+const logoutBlockEl = document.querySelector<HTMLElement>('#logoutBlock')!;
+const registerBlockEl = document.querySelector<HTMLElement>('#registerBlock')!;
+const protectedContentEl = document.querySelector<HTMLElement>('#protectedContent')!;
 
 let posts: PostDto[] = [];
 let users: UserDto[] = [];
+let usersListStatus: 'idle' | 'loading' | 'error' | 'empty' = 'idle';
+let usersListErrorMsg = '';
 let categories: CategoryDto[] = [];
 let currentPage = 1;
 let totalPages = 1;
@@ -58,20 +67,20 @@ let totalItems = 0;
 let sortField = 'createdAt';
 let sortDirection: 'asc' | 'desc' = 'desc';
 let currentEditingId: string | null = null;
+let isFormReadOnly = false;
 
 const PAGE_SIZE = 10;
+const EMAIL_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)(?!.*\.\.)[A-Za-z0-9._%+-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])*(?:\.(?:com\.ua|com|ua))$/i;
 
-// ─── Word count helper ────────────────────────────────────────────────────────
+function getCurrentAuthorEmail(): string {
+  const user = getCurrentUser();
+  return user?.email ?? '';
+}
 
 function countWords(text: string): number {
   if (!text) return 0;
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
-
-// ─── Frontend validation (mirrors backend rules) ──────────────────────────────
-// Rules: title required, category required, text 1-200 words, author valid email.
-// These rules deliberately match the backend's validateCreatePostDto so the user
-// gets instant feedback that agrees with server-side validation (no contradictions).
 
 function setFieldError(fieldId: string, message: string): void {
   const errEl = document.getElementById(`${fieldId}Error`);
@@ -118,30 +127,15 @@ function validateField(fieldName: string): boolean {
       clearFieldError('text');
       return true;
     }
-    case 'author': {
-      const val = authorEl.value.trim();
-      if (!val) {
-        setFieldError('author', "Поле обов'язкове");
-        return false;
-      }
-      if (!/^\S+@\S+\.\S+$/.test(val)) {
-        setFieldError('author', 'Невірний формат email');
-        return false;
-      }
-      clearFieldError('author');
-      return true;
-    }
     default:
       return true;
   }
 }
 
 function validateAll(): boolean {
-  const results = ['title', 'category', 'text', 'author'].map(validateField);
+  const results = ['title', 'category', 'text'].map(validateField);
   return results.every(Boolean);
 }
-
-// ─── Posts loader ─────────────────────────────────────────────────────────────
 
 async function loadPosts(): Promise<void> {
   setListStatus(postsTableBody, 'loading');
@@ -177,92 +171,301 @@ async function loadPosts(): Promise<void> {
   }
 }
 
-// ─── Users & categories loader ────────────────────────────────────────────────
 
-async function loadUsersAndCategories(): Promise<void> {
+function renderUsersList(): void {
+  usersListEl.innerHTML = '';
+  if (usersListStatus === 'loading') {
+    const li = document.createElement('li');
+    li.className = 'users-list-status';
+    li.textContent = '⏳ Завантаження…';
+    usersListEl.appendChild(li);
+    return;
+  }
+  if (usersListStatus === 'error') {
+    const li = document.createElement('li');
+    li.className = 'users-list-status users-list-error';
+    li.textContent = `❌ ${usersListErrorMsg || 'Помилка завантаження'}`;
+    usersListEl.appendChild(li);
+    return;
+  }
+  if (users.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'users-list-empty';
+    empty.textContent = 'Юзерів поки немає';
+    usersListEl.appendChild(empty);
+    return;
+  }
+  users.forEach((u) => {
+    const li = document.createElement('li');
+    const strong = document.createElement('strong');
+    strong.textContent = u.name;
+    const span = document.createElement('span');
+    span.textContent = u.email;
+    li.appendChild(strong);
+    li.appendChild(document.createTextNode(' '));
+    li.appendChild(span);
+    usersListEl.appendChild(li);
+  });
+}
+
+async function loadUsers(): Promise<void> {
+  usersListStatus = 'loading';
+  usersListErrorMsg = '';
+  renderUsersList();
   try {
-    const [usersResult, catsResult] = await Promise.all([
-      getUsers(),
-      getCategories(),
-    ]);
+    const usersResult = await getUsers();
     users = usersResult.items;
-    categories = catsResult.items;
-    renderUserOptions(userSelectEl, users);
-    renderCategoryOptions(categoryEl, categories);
+    usersListStatus = users.length === 0 ? 'empty' : 'idle';
+    renderUsersList();
   } catch (err) {
-    // Non-fatal: the user can still manually type an email / category name
-    console.error('Failed to load users/categories:', err);
+    usersListStatus = 'error';
+    usersListErrorMsg = getApiErrorMsg(err);
+    renderUsersList();
+    console.error('Failed to load users:', err);
   }
 }
 
-// ─── Form helpers ─────────────────────────────────────────────────────────────
+async function loadCategories(): Promise<void> {
+  try {
+    const catsResult = await getCategories();
+    categories = catsResult.items;
+    renderCategoryOptions(categoryEl, categories);
+  } catch (err) {
+    console.error('Failed to load categories:', err);
+  }
+}
 
 function resetForm(cancelEdit = true): void {
   postForm.reset();
   postIdEl.value = '';
   if (wordCountEl) wordCountEl.textContent = '0/200 слів';
   clearFieldErrors();
-  if (cancelEdit) currentEditingId = null;
+  if (cancelEdit) {
+    currentEditingId = null;
+    isFormReadOnly = false;
+    setFormEnabled(postForm, true);
+    saveBtn.disabled = false;
+    clearBtn.disabled = false;
+    currentAuthorEl.textContent = getCurrentAuthorEmail() || 'не авторизований';
+  }
 }
 
-// ─── Save handler (create / update) ──────────────────────────────────────────
+function refreshAuthStatus(): void {
+  const user = getCurrentUser();
+  if (!user) {
+    authStatusEl.textContent = 'Ви не авторизовані';
+    currentAuthorEl.textContent = 'не авторизований';
+    loginFormBlockEl.hidden = false;
+    registerBlockEl.hidden = false;
+    logoutBlockEl.hidden = true;
+    protectedContentEl.hidden = true;
+    return;
+  }
+  authStatusEl.textContent = `Ви увійшли як: ${user.name} (${user.email})`;
+  currentAuthorEl.textContent = user.email;
+  loginFormBlockEl.hidden = true;
+  registerBlockEl.hidden = true;
+  logoutBlockEl.hidden = false;
+  protectedContentEl.hidden = false;
+}
+
+window.addEventListener('auth-state-changed', () => {
+  refreshAuthStatus();
+});
+
+function validateAuthField(field: 'name' | 'email' | 'password', isRegister: boolean): boolean {
+  if (field === 'name') {
+    if (!isRegister) {
+      clearFieldError('authName');
+      return true;
+    }
+    const value = authNameEl.value.trim();
+    if (value.length < 2 || value.length > 50) {
+      setFieldError('authName', "Ім'я має бути від 2 до 50 символів");
+      return false;
+    }
+    clearFieldError('authName');
+    return true;
+  }
+
+  if (field === 'email') {
+    const value = authEmailEl.value.trim();
+    if (!value) {
+      setFieldError('authEmail', "Поле обов'язкове");
+      return false;
+    }
+    if (!EMAIL_REGEX.test(value)) {
+      setFieldError('authEmail', 'Невірний формат email');
+      return false;
+    }
+    clearFieldError('authEmail');
+    return true;
+  }
+
+  if (!authPasswordEl.value) {
+    setFieldError('authPassword', "Поле обов'язкове");
+    return false;
+  }
+  if (authPasswordEl.value.length < 8) {
+    setFieldError('authPassword', 'Пароль має містити мінімум 8 символів');
+    return false;
+  }
+  clearFieldError('authPassword');
+  return true;
+}
+
+function validateAuthForm(isRegister: boolean): boolean {
+  const nameOk = validateAuthField('name', isRegister);
+  const emailOk = validateAuthField('email', isRegister);
+  const passwordOk = validateAuthField('password', isRegister);
+  return nameOk && emailOk && passwordOk;
+}
+
+function showAuthErrors(details: Array<{ field: string; message: string }>): void {
+  details.forEach(({ field, message }) => {
+    if (field === 'name') {
+      setFieldError('authName', message);
+      return;
+    }
+    if (field === 'email') {
+      setFieldError('authEmail', message);
+      return;
+    }
+    if (field === 'password') {
+      setFieldError('authPassword', message);
+    }
+  });
+}
 
 saveBtn.addEventListener('click', async () => {
   clearFieldErrors();
+  
+  if (isFormReadOnly) {
+    showNotice(noticeEl, 'error', 'Ви не можете редагувати чужий пост');
+    return;
+  }
+  
   if (!validateAll()) return;
+
+  const author = getCurrentAuthorEmail();
+  if (!author) {
+    showNotice(noticeEl, 'error', 'Спочатку виконайте вхід або реєстрацію');
+    return;
+  }
 
   const data: CreatePostDto = {
     title: titleEl.value.trim(),
     category: categoryEl.value,
     text: textEl.value.trim(),
-    author: authorEl.value.trim(),
+    author,
   };
-
-  if (userSelectEl?.value) {
-    data.userId = Number(userSelectEl.value);
-  }
 
   toggleButtonLoader(saveBtn, true);
   setFormEnabled(postForm, false);
   try {
     if (currentEditingId) {
       await updatePost(currentEditingId, data);
-      showNotice(noticeEl, 'success', '✅ Пост оновлено');
+      showNotice(noticeEl, 'success', 'Пост оновлено');
     } else {
       await createPost(data);
-      showNotice(noticeEl, 'success', '✅ Пост створено');
+      showNotice(noticeEl, 'success', 'Пост створено');
     }
     await loadPosts();
     resetForm(true);
   } catch (err) {
-    // Show per-field errors from backend validation response
     if (err instanceof ApiError && err.status === 400 && err.details.length > 0) {
       showFieldErrors(err.details);
     }
     showNotice(noticeEl, 'error', getApiErrorMsg(err));
   } finally {
     toggleButtonLoader(saveBtn, false);
-    setFormEnabled(postForm, true);
+    setFormEnabled(postForm, !isFormReadOnly);
+    saveBtn.disabled = isFormReadOnly;
+    clearBtn.disabled = false;
+  }
+});
+
+registerBtn.addEventListener('click', async () => {
+  clearFieldErrors();
+  if (!validateAuthForm(true)) return;
+  toggleButtonLoader(registerBtn, true);
+  try {
+    await register({
+      name: authNameEl.value.trim(),
+      email: authEmailEl.value.trim(),
+      password: authPasswordEl.value,
+    });
+    refreshAuthStatus();
+    await loadUsers();
+    await loadCategories();
+    await loadPosts();
+    showNotice(noticeEl, 'success', 'Реєстрація успішна');
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 400 || err.status === 409) && err.details.length > 0) {
+      showAuthErrors(err.details);
+    }
+    showNotice(noticeEl, 'error', getApiErrorMsg(err));
+  } finally {
+    toggleButtonLoader(registerBtn, false);
+  }
+});
+
+loginBtn.addEventListener('click', async () => {
+  clearFieldErrors();
+  if (!validateAuthForm(false)) return;
+  toggleButtonLoader(loginBtn, true);
+  try {
+    await login({
+      email: authEmailEl.value.trim(),
+      password: authPasswordEl.value,
+    });
+    refreshAuthStatus();
+    await loadUsers();
+    await loadCategories();
+    await loadPosts();
+    showNotice(noticeEl, 'success', 'Успішний вхід');
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 400 && err.details.length > 0) {
+      showAuthErrors(err.details);
+    }
+    showNotice(noticeEl, 'error', getApiErrorMsg(err));
+  } finally {
+    toggleButtonLoader(loginBtn, false);
+  }
+});
+
+logoutBtn.addEventListener('click', async () => {
+  toggleButtonLoader(logoutBtn, true);
+  try {
+    logout();
+    clearAuthState();
+    refreshAuthStatus();
+    resetForm(true);
+    showNotice(noticeEl, 'success', 'Ви вийшли з системи');
+  } finally {
+    toggleButtonLoader(logoutBtn, false);
   }
 });
 
 clearBtn.addEventListener('click', () => resetForm(true));
-
-// ─── Table: edit / delete ─────────────────────────────────────────────────────
 
 postsTableBody.addEventListener('click', async (e: Event) => {
   const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button');
   if (!btn) return;
 
   const action = btn.dataset.action;
-  const id = btn.dataset.id!;
+  const id = btn.dataset.id;
+  if (!id) return;
 
   if (action === 'delete') {
-    if (!confirm('Ви впевнені, що хочете видалити цей пост?')) return;
     toggleButtonLoader(btn, true);
     try {
+     
+      
+      if (!confirm('Ви впевнені, що хочете видалити цей пост?')) return;
+      
       await deletePost(id);
-      showNotice(noticeEl, 'success', '🗑️ Пост видалено');
+      showNotice(noticeEl, 'success', 'Пост видалено');
       await loadPosts();
       if (currentEditingId === id) resetForm(true);
     } catch (err) {
@@ -274,18 +477,31 @@ postsTableBody.addEventListener('click', async (e: Event) => {
     toggleButtonLoader(btn, true);
     try {
       const post = await getPostById(id);
+      const currentAuthor = getCurrentAuthorEmail();
+      const isAuthor = post.author === currentAuthor;
+      
       currentEditingId = post.id;
+      isFormReadOnly = !isAuthor;
+      currentAuthorEl.textContent = post.author;
+      
       postIdEl.value = post.id;
       titleEl.value = post.title;
       categoryEl.value = post.category;
       textEl.value = post.text;
-      authorEl.value = post.author;
       if (wordCountEl) {
         wordCountEl.textContent = `${countWords(post.text)}/200 слів`;
       }
-      const matched = users.find((u) => u.email === post.author);
-      if (userSelectEl) userSelectEl.value = matched ? String(matched.id) : '';
       clearFieldErrors();
+      
+      if (!isAuthor) {
+        setFormEnabled(postForm, false);
+        saveBtn.disabled = true;
+        clearBtn.disabled = false;
+      } else {
+        setFormEnabled(postForm, true);
+        saveBtn.disabled = false;
+        clearBtn.disabled = false;
+      }
     } catch (err) {
       showNotice(noticeEl, 'error', getApiErrorMsg(err));
     } finally {
@@ -294,42 +510,30 @@ postsTableBody.addEventListener('click', async (e: Event) => {
   }
 });
 
-// ─── Word count ───────────────────────────────────────────────────────────────
-
 textEl.addEventListener('input', () => {
   const words = countWords(textEl.value);
   if (words > 200) {
     textEl.value = textEl.value.trim().split(/\s+/).filter(Boolean).slice(0, 200).join(' ');
   }
-  if (wordCountEl)
-    wordCountEl.textContent = `${countWords(textEl.value)}/200 слів`;
+  if (wordCountEl) wordCountEl.textContent = `${countWords(textEl.value)}/200 слів`;
   validateField('text');
 });
-
-// ─── User select ──────────────────────────────────────────────────────────────
-
-userSelectEl.addEventListener('change', () => {
-  const u = users.find((x) => String(x.id) === userSelectEl.value);
-  if (u) {
-    authorEl.value = u.email;
-    validateField('author');
-  }
-});
-
-// ─── Inline validation on blur/change ─────────────────────────────────────────
 
 titleEl.addEventListener('input', () => validateField('title'));
 titleEl.addEventListener('blur', () => validateField('title'));
 categoryEl.addEventListener('change', () => validateField('category'));
-authorEl.addEventListener('input', () => validateField('author'));
-authorEl.addEventListener('blur', () => validateField('author'));
-
-// ─── Sort (click on column headers) ──────────────────────────────────────────
+authNameEl.addEventListener('input', () => validateAuthField('name', true));
+authNameEl.addEventListener('blur', () => validateAuthField('name', true));
+authEmailEl.addEventListener('input', () => validateAuthField('email', true));
+authEmailEl.addEventListener('blur', () => validateAuthField('email', true));
+authPasswordEl.addEventListener('input', () => validateAuthField('password', true));
+authPasswordEl.addEventListener('blur', () => validateAuthField('password', true));
 
 document.querySelectorAll<HTMLElement>('#postsTable th[data-sort]').forEach((th) => {
   th.style.cursor = 'pointer';
   th.addEventListener('click', () => {
-    const field = th.dataset.sort!;
+    const field = th.dataset.sort;
+    if (!field) return;
     if (sortField === field) {
       sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
     } else {
@@ -340,8 +544,6 @@ document.querySelectorAll<HTMLElement>('#postsTable th[data-sort]').forEach((th)
     loadPosts();
   });
 });
-
-// ─── Pagination ───────────────────────────────────────────────────────────────
 
 pageSelectEl?.addEventListener('change', () => {
   const p = Number(pageSelectEl.value);
@@ -365,7 +567,9 @@ nextPageBtn?.addEventListener('click', () => {
   }
 });
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
-
-loadUsersAndCategories();
-loadPosts();
+refreshAuthStatus();
+if (getCurrentUser()) {
+  loadUsers();
+  loadCategories();
+  loadPosts();
+}

@@ -1,4 +1,4 @@
-import { all, get, run, sqlString } from "../db/client.js";
+import { all, get, run } from "../db/client.js";
 import type { Category } from "../types.js";
 
 export const categoriesRepository = {
@@ -11,19 +11,25 @@ export const categoriesRepository = {
   },
 
   getById(id: number): Category | undefined {
-    return get<Category>(`
+    return get<Category>(
+      `
       SELECT id, name, createdAt, updatedAt
       FROM categories
-      WHERE id = ${Number(id)};
-    `);
+      WHERE id = ?;
+    `,
+      [id]
+    );
   },
 
   getByName(name: string): Category | undefined {
-    return get<Category>(`
+    return get<Category>(
+      `
       SELECT id, name, createdAt, updatedAt
       FROM categories
-      WHERE lower(name) = lower(${sqlString(name.trim())});
-    `);
+      WHERE lower(name) = lower(?);
+    `,
+      [name.trim()]
+    );
   },
 
   exists(category: string): boolean {
@@ -31,19 +37,28 @@ export const categoriesRepository = {
   },
 
   nameExists(name: string, excludeId?: number): boolean {
-    const sql = excludeId === undefined
-      ? `SELECT id FROM categories WHERE lower(name) = lower(${sqlString(name.trim())}) LIMIT 1;`
-      : `SELECT id FROM categories WHERE lower(name) = lower(${sqlString(name.trim())}) AND id != ${Number(excludeId)} LIMIT 1;`;
-
-    return get<{ id: number }>(sql) !== undefined;
+    const trimmedName = name.trim();
+    if (excludeId === undefined) {
+      return get<{ id: number }>(
+        `SELECT id FROM categories WHERE lower(name) = lower(?) LIMIT 1;`,
+        [trimmedName]
+      ) !== undefined;
+    }
+    return get<{ id: number }>(
+      `SELECT id FROM categories WHERE lower(name) = lower(?) AND id != ? LIMIT 1;`,
+      [trimmedName, excludeId]
+    ) !== undefined;
   },
 
   create(input: { name: string }): Category {
     const now = new Date().toISOString();
-    const result = run(`
+    const result = run(
+      `
       INSERT INTO categories (name, createdAt)
-      VALUES (${sqlString(input.name.trim())}, ${sqlString(now)});
-    `);
+      VALUES (?, ?);
+    `,
+      [input.name.trim(), now]
+    );
 
     return this.getById(result.lastInsertRowid)!;
   },
@@ -58,16 +73,19 @@ export const categoriesRepository = {
     const nextName = input.name?.trim() ?? category.name;
     const now = new Date().toISOString();
 
-    run(`
+    run(
+      `
       UPDATE categories
-      SET name = ${sqlString(nextName)}, updatedAt = ${sqlString(now)}
-      WHERE id = ${Number(id)};
-    `);
+      SET name = ?, updatedAt = ?
+      WHERE id = ?;
+    `,
+      [nextName, now, id]
+    );
 
     return this.getById(id);
   },
 
   delete(id: number): boolean {
-    return run(`DELETE FROM categories WHERE id = ${Number(id)};`).changes > 0;
+    return run(`DELETE FROM categories WHERE id = ?;`, [id]).changes > 0;
   }
 };

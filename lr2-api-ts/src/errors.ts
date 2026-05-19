@@ -12,3 +12,11 @@ export function errNotFound(message: string): AppError {
 export function errConflict(message: string, details: Detail[] = []): AppError {
   return new AppError(409, 'CONFLICT', message, details);
 }
+
+export function errForbidden(message: string): AppError {
+  return new AppError(403, 'FORBIDDEN', message, [] as Detail[]);
+}
+
+  export function errUnauthorized(message: string): AppError {
+    return new AppError(401, 'UNAUTHORIZED', message, [] as Detail[]);
+  }

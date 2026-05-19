@@ -44,6 +44,22 @@ export interface CreatePostDto {
 
 export type UpdatePostDto = Partial<CreatePostDto>;
 
+export interface LoginDto {
+  email: string;
+  password: string;
+}
+
+export interface RegisterDto {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface AuthResponseDto {
+  token: string;
+  user: UserDto;
+}
+
 // ─── Error shapes ─────────────────────────────────────────────────────────────
 
 /** Single field-level validation error returned by the backend. */

@@ -17,7 +17,12 @@ export const postsController = {
 
   create(req: Request, res: Response, next: NextFunction): void {
     try {
-      res.status(201).json(postsService.create(req.body));
+      const currentUserId = req.user?.id;
+      if (!currentUserId) {
+        res.status(401).json({ error: { code: "UNAUTHORIZED", message: "User not authenticated" } });
+        return;
+      }
+      res.status(201).json(postsService.create(req.body, currentUserId));
     } catch (error) {
       next(error);
     }
@@ -26,7 +31,12 @@ export const postsController = {
   update(req: Request, res: Response, next: NextFunction): void {
     try {
       const postId = String(req.params.id);
-      res.status(200).json(postsService.update(postId, req.body));
+      const currentUserId = req.user?.id;
+      if (!currentUserId) {
+        res.status(401).json({ error: { code: "UNAUTHORIZED", message: "User not authenticated" } });
+        return;
+      }
+      res.status(200).json(postsService.update(postId, req.body, currentUserId));
     } catch (error) {
       next(error);
     }
@@ -35,7 +45,12 @@ export const postsController = {
   delete(req: Request, res: Response, next: NextFunction): void {
     try {
       const postId = String(req.params.id);
-      postsService.delete(postId);
+      const currentUserId = req.user?.id;
+      if (!currentUserId) {
+        res.status(401).json({ error: { code: "UNAUTHORIZED", message: "User not authenticated" } });
+        return;
+      }
+      postsService.delete(postId, currentUserId);
       res.status(204).send();
     } catch (error) {
       next(error);

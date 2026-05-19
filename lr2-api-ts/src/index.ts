@@ -4,9 +4,11 @@ import cors from "cors";
 import { initDb } from "./db/initDb.js";
 import { logger } from "./middleware/logger.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { securityHeaders } from "./middleware/securityHeaders.js";
 import { usersRouter } from "./routes/users.router.js";
 import { postsRouter } from "./routes/posts.router.js";
 import { categoriesRouter } from "./routes/categories.router.js";
+import { authRouter } from "./routes/auth.router.js";
 import { errNotFound } from "./errors.js";
 
 const app = express();
@@ -33,12 +35,13 @@ const corsOptions: cors.CorsOptions = {
     }
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Demo-UserId'],
   credentials: true,
 };
 
 app.use(express.json());
 app.use(cors(corsOptions));
+app.use(securityHeaders);
 app.use(logger);
 
 app.get('/api/v1/health', (_req, res) => res.status(200).json({ ok: true }));
@@ -46,6 +49,7 @@ app.get('/api/v1/health', (_req, res) => res.status(200).json({ ok: true }));
 app.use('/api/v1/users',      usersRouter);
 app.use('/api/v1/posts',      postsRouter);
 app.use('/api/v1/categories', categoriesRouter);
+app.use('/api/v1/auth',       authRouter);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json(errNotFound('Route not found'));
