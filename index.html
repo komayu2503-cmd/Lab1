@@ -44,6 +44,10 @@
 						<span class="btn-text">Вийти</span>
 						<span class="loader" hidden></span>
 					</button>
+					<button type="button" id="deleteUserBtn" class="btn-with-loader danger">
+						<span class="btn-text">Видалити юзера</span>
+						<span class="loader" hidden></span>
+					</button>
 				</div>
 			</div>
 
@@ -118,6 +122,31 @@
 		</div>
 
 		<h3>Посты</h3>
+		<section class="category-stats-section">
+			<h3>Статистика по категоріях</h3>
+			<table id="categoryStatsTable" class="category-stats-table">
+				<thead>
+					<tr>
+						<th>Категорія</th>
+						<th>Кількість постів</th>
+						<th>Останній пост</th>
+					</tr>
+				</thead>
+				<tbody id="categoryStatsBody"></tbody>
+			</table>
+		</section>
+		<section class="author-stats-section">
+			<h3>Статистика по авторам</h3>
+			<table id="authorStatsTable" class="author-stats-table">
+				<thead>
+					<tr>
+						<th>Автор</th>
+						<th>Кількість постів</th>
+					</tr>
+				</thead>
+				<tbody id="authorStatsBody"></tbody>
+			</table>
+		</section>
 		<div class="posts-table">
 			<table id="postsTable">
 				<thead>

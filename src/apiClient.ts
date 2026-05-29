@@ -1,7 +1,9 @@
 import { API_BASE_URL, REQUEST_TIMEOUT_MS } from './config.js';
 import type {
+  AuthorPostStatDto,
   ApiErrorBody,
   AuthResponseDto,
+  CategoryPostStatDto,
   CategoryDto,
   CreatePostDto,
   LoginDto,
@@ -155,10 +157,22 @@ export function getPostById(id: string): Promise<PostDto> {
   return request<PostDto>(`/posts/${id}`);
 }
 
+export function getCategoryPostStats(): Promise<CategoryPostStatDto[]> {
+  return request<CategoryPostStatDto[]>('/posts/stats');
+}
+
+export function getAuthorPostStats(): Promise<AuthorPostStatDto[]> {
+  return request<AuthorPostStatDto[]>('/posts/stats/authors');
+}
+
 // ─── Users ────────────────────────────────────────────────────────────────────
 
 export function getUsers(): Promise<ListResponse<UserDto>> {
   return request<ListResponse<UserDto>>('/users');
+}
+
+export function deleteCurrentUser(userId: number): Promise<void> {
+  return request<void>(`/users/${userId}`, { method: 'DELETE' });
 }
 
 // ─── Categories ───────────────────────────────────────────────────────────────

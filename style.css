@@ -1,5 +1,5 @@
 body { 
-    font-family: 'Inter', Arial, sans-serif; 
+    font-family:'Space Grotesk', sans-serif; 
     font-size: 16px; 
     background: linear-gradient(180deg, #b51a2b 0%, #ffa586 40%, #1f2a44 100%);
     margin: 0; 
@@ -118,6 +118,11 @@ body {
     color: #fff;
 }
 
+.form-actions .danger {
+    background: linear-gradient(135deg, #d64545, #7f101f);
+    color: #fff;
+}
+
 /* Disabled save button state */
 #saveBtn:disabled {
     background: linear-gradient(135deg, #5f6b84, #46506a);
@@ -155,7 +160,14 @@ body {
 
 .posts-table th,
 .posts-table td {
-    padding: 0.7rem;
+   padding: 0.7rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    white-space: normal; 
+    max-width: 220px; 
+    vertical-align: top;
+    
 }
 
 /* Rows */
@@ -238,7 +250,7 @@ body {
 }
 
 body { 
-    font-family: 'Inter', Arial, sans-serif; 
+    font-family:'Space Grotesk', sans-serif; 
     font-size: 16px; 
     margin: 0; 
     color: #f5f5f5;
@@ -343,4 +355,38 @@ body {
 .author-display {
     margin: 0.4rem 0 0.8rem;
     color: #ffd9cc;
+}
+
+/* ─── Category stats ─────────────────────────────────────────────────────── */
+
+.category-stats-section,
+.author-stats-section {
+    margin-bottom: 1rem;
+}
+
+.category-stats-table,
+.author-stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.category-stats-table th,
+.category-stats-table td,
+.author-stats-table th,
+.author-stats-table td {
+    padding: 0.65rem 0.7rem;
+}
+
+.category-stats-table th,
+.author-stats-table th {
+    background: #1f2a44;
+    color: #ffa586;
+    text-align: left;
+}
+
+.category-stats-table tr:nth-child(even),
+.author-stats-table tr:nth-child(even) {
+    background: rgba(255,255,255,0.03);
 }

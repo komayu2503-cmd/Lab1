@@ -1,6 +1,6 @@
 import { usersRepository } from "../repositories/users.repository.js";
 import { userToDto } from "../mappers.js";
-import { errConflict, errNotFound, errValidation } from "../errors.js";
+import { errConflict, errForbidden, errNotFound, errValidation } from "../errors.js";
 import { validateCreateUserDto, validateUpdateUserDto } from "../dtos/user.schemas.js";
 import type { ListResponse, UserDto } from "../types.js";
 
@@ -58,7 +58,11 @@ export const usersService = {
     return userToDto(updated);
   },
 
-  delete(id: number): void {
+  delete(id: number, currentUserId: number): void {
+    if (id !== currentUserId) {
+      throw errForbidden('Access denied: you can only delete your own user');
+    }
+
     if (!usersRepository.delete(id)) {
       throw errNotFound('User not found');
     }

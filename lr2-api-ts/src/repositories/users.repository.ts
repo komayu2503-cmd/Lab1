@@ -72,14 +72,18 @@ export const usersRepository = {
   },
 
   delete(id: number): boolean {
+    const user = this.getById(id);
+    if (!user) {
+      return false;
+    }
+
     const db = getDb();
     let deleted = false;
 
     const transaction = db.transaction(() => {
-      const now = new Date().toISOString();
       run(
-        `UPDATE posts SET userId = NULL, updatedAt = ? WHERE userId = ?;`,
-        [now, id]
+        `DELETE FROM posts WHERE userId = ? OR lower(author) = lower(?);`,
+        [id, user.email]
       );
       const result = run(`DELETE FROM users WHERE id = ?;`, [id]);
       deleted = result.changes > 0;

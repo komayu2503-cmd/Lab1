@@ -1,7 +1,9 @@
 import {
-  clearAuthState,
   createPost,
+  deleteCurrentUser,
   deletePost,
+  getAuthorPostStats,
+  getCategoryPostStats,
   getCategories,
   getCurrentUser,
   getPostById,
@@ -12,7 +14,7 @@ import {
   register,
   updatePost,
 } from './apiClient.js';
-import type { CategoryDto, CreatePostDto, PostDto, UserDto } from './dtos.js';
+import type { AuthorPostStatDto, CategoryDto, CategoryPostStatDto, CreatePostDto, PostDto, UserDto } from './dtos.js';
 import { ApiError } from './dtos.js';
 import {
   clearFieldErrors,
@@ -43,6 +45,8 @@ const pageSelectEl = document.querySelector<HTMLSelectElement>('#pageSelect');
 const paginationSummaryEl = document.querySelector<HTMLElement>('#paginationSummary');
 const prevPageBtn = document.querySelector<HTMLButtonElement>('#prevPageBtn');
 const nextPageBtn = document.querySelector<HTMLButtonElement>('#nextPageBtn');
+const categoryStatsBodyEl = document.querySelector<HTMLTableSectionElement>('#categoryStatsBody')!;
+const authorStatsBodyEl = document.querySelector<HTMLTableSectionElement>('#authorStatsBody')!;
 const usersListEl = document.querySelector<HTMLUListElement>('#usersList')!;
 const authNameEl = document.querySelector<HTMLInputElement>('#authName')!;
 const authEmailEl = document.querySelector<HTMLInputElement>('#authEmail')!;
@@ -50,6 +54,7 @@ const authPasswordEl = document.querySelector<HTMLInputElement>('#authPassword')
 const registerBtn = document.querySelector<HTMLButtonElement>('#registerBtn')!;
 const loginBtn = document.querySelector<HTMLButtonElement>('#loginBtn')!;
 const logoutBtn = document.querySelector<HTMLButtonElement>('#logoutBtn')!;
+const deleteUserBtn = document.querySelector<HTMLButtonElement>('#deleteUserBtn')!;
 const authStatusEl = document.querySelector<HTMLElement>('#authStatus')!;
 const loginFormBlockEl = document.querySelector<HTMLElement>('#loginFormBlock')!;
 const logoutBlockEl = document.querySelector<HTMLElement>('#logoutBlock')!;
@@ -137,6 +142,111 @@ function validateAll(): boolean {
   return results.every(Boolean);
 }
 
+function renderCategoryStats(stats: CategoryPostStatDto[]): void {
+  categoryStatsBodyEl.innerHTML = '';
+
+  if (stats.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 3;
+    td.className = 'status-cell';
+    td.textContent = 'Постів поки немає';
+    tr.appendChild(td);
+    categoryStatsBodyEl.appendChild(tr);
+    return;
+  }
+
+  stats.forEach((item) => {
+    const tr = document.createElement('tr');
+    const categoryTd = document.createElement('td');
+    categoryTd.textContent = item.category;
+    const countTd = document.createElement('td');
+    countTd.textContent = String(item.postCount);
+    const latestTd = document.createElement('td');
+    latestTd.textContent = item.latestPost ? new Date(item.latestPost).toLocaleString('uk-UA') : '—';
+    tr.appendChild(categoryTd);
+    tr.appendChild(countTd);
+    tr.appendChild(latestTd);
+    categoryStatsBodyEl.appendChild(tr);
+  });
+}
+
+async function loadCategoryStats(): Promise<void> {
+  categoryStatsBodyEl.innerHTML = '';
+  const tr = document.createElement('tr');
+  const td = document.createElement('td');
+  td.colSpan = 3;
+  td.className = 'status-cell';
+  td.textContent = '⏳ Завантаження…';
+  tr.appendChild(td);
+  categoryStatsBodyEl.appendChild(tr);
+
+  try {
+    const stats = await getCategoryPostStats();
+    renderCategoryStats(stats);
+  } catch (err) {
+    categoryStatsBodyEl.innerHTML = '';
+    const errRow = document.createElement('tr');
+    const errCell = document.createElement('td');
+    errCell.colSpan = 3;
+    errCell.className = 'status-cell status-error';
+    errCell.textContent = `❌ ${getApiErrorMsg(err)}`;
+    errRow.appendChild(errCell);
+    categoryStatsBodyEl.appendChild(errRow);
+  }
+}
+
+function renderAuthorStats(stats: AuthorPostStatDto[]): void {
+  authorStatsBodyEl.innerHTML = '';
+
+  if (stats.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 2;
+    td.className = 'status-cell';
+    td.textContent = 'Постів поки немає';
+    tr.appendChild(td);
+    authorStatsBodyEl.appendChild(tr);
+    return;
+  }
+
+  stats.forEach((item) => {
+    const tr = document.createElement('tr');
+    const authorTd = document.createElement('td');
+    authorTd.textContent = item.author;
+    const countTd = document.createElement('td');
+    countTd.textContent = String(item.postCount);
+    tr.appendChild(authorTd);
+    tr.appendChild(countTd);
+    authorStatsBodyEl.appendChild(tr);
+  });
+}
+
+async function loadAuthorStats(): Promise<void> {
+  authorStatsBodyEl.innerHTML = '';
+  const tr = document.createElement('tr');
+  const td = document.createElement('td');
+  td.colSpan = 2;
+  td.className = 'status-cell';
+  td.textContent = '⏳ Завантаження…';
+  tr.appendChild(td);
+  authorStatsBodyEl.appendChild(tr);
+
+  try {
+    const stats = await getAuthorPostStats();
+    renderAuthorStats(stats);
+  } catch (err) {
+    authorStatsBodyEl.innerHTML = '';
+    const errRow = document.createElement('tr');
+    const errCell = document.createElement('td');
+    errCell.colSpan = 2;
+    errCell.className = 'status-cell status-error';
+    errCell.textContent = `❌ ${getApiErrorMsg(err)}`;
+    errRow.appendChild(errCell);
+    authorStatsBodyEl.appendChild(errRow);
+  }
+}
+
 async function loadPosts(): Promise<void> {
   setListStatus(postsTableBody, 'loading');
   try {
@@ -166,8 +276,12 @@ async function loadPosts(): Promise<void> {
       totalPages,
       totalItems,
     );
+    void loadCategoryStats();
+    void loadAuthorStats();
   } catch (err) {
     setListStatus(postsTableBody, 'error', getApiErrorMsg(err));
+    void loadCategoryStats();
+    void loadAuthorStats();
   }
 }
 
@@ -438,12 +552,37 @@ logoutBtn.addEventListener('click', async () => {
   toggleButtonLoader(logoutBtn, true);
   try {
     logout();
-    clearAuthState();
     refreshAuthStatus();
     resetForm(true);
     showNotice(noticeEl, 'success', 'Ви вийшли з системи');
   } finally {
     toggleButtonLoader(logoutBtn, false);
+  }
+});
+
+deleteUserBtn.addEventListener('click', async () => {
+  const currentUser = getCurrentUser();
+  if (!currentUser) {
+    showNotice(noticeEl, 'error', 'Спочатку увійдіть у систему');
+    return;
+  }
+
+  if (!confirm('Ви дійсно хочете видалити свій акаунт і всі свої пости?')) {
+    return;
+  }
+
+  toggleButtonLoader(deleteUserBtn, true);
+  try {
+    await deleteCurrentUser(currentUser.id);
+    logout();
+    refreshAuthStatus();
+    resetForm(true);
+    await loadUsers();
+    showNotice(noticeEl, 'success', 'Ваш акаунт і всі ваші пости видалено');
+  } catch (err) {
+    showNotice(noticeEl, 'error', getApiErrorMsg(err));
+  } finally {
+    toggleButtonLoader(deleteUserBtn, false);
   }
 });
 
@@ -460,8 +599,6 @@ postsTableBody.addEventListener('click', async (e: Event) => {
   if (action === 'delete') {
     toggleButtonLoader(btn, true);
     try {
-     
-      
       if (!confirm('Ви впевнені, що хочете видалити цей пост?')) return;
       
       await deletePost(id);

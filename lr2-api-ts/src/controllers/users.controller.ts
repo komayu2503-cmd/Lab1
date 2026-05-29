@@ -32,7 +32,13 @@ export const usersController = {
 
   delete(req: Request, res: Response, next: NextFunction): void {
     try {
-      usersService.delete(Number(req.params.id));
+      const currentUserId = req.user?.id;
+      if (!currentUserId) {
+        res.status(401).json({ error: { code: "UNAUTHORIZED", message: "User not authenticated", details: [] } });
+        return;
+      }
+
+      usersService.delete(Number(req.params.id), currentUserId);
       res.status(204).send();
     } catch (error) {
       next(error);

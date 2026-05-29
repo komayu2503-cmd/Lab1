@@ -222,17 +222,15 @@ export const postsRepository = {
     `);
   },
 
-  getAuthorStats(): { category: string; uniqueAuthors: number; postCount: number }[] {
-    type AuthorStatsRow = { category: string; uniqueAuthors: number; postCount: number };
+  getAuthorStats(): { author: string; postCount: number }[] {
+    type AuthorStatsRow = { author: string; postCount: number };
     return all<AuthorStatsRow>(`
       SELECT
-        c.name AS category,
-        COUNT(DISTINCT p.author) AS uniqueAuthors,
+        p.author AS author,
         COUNT(p.id) AS postCount
-      FROM categories c
-      LEFT JOIN posts p ON p.categoryId = c.id
-      GROUP BY c.id, c.name
-      ORDER BY uniqueAuthors DESC, postCount DESC, c.name ASC;
+      FROM posts p
+      GROUP BY lower(p.author)
+      ORDER BY postCount DESC, p.author ASC;
     `);
   },
 

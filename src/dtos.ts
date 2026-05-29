@@ -24,6 +24,17 @@ export interface PostDto {
   updatedAt: string;
 }
 
+export interface CategoryPostStatDto {
+  category: string;
+  postCount: number;
+  latestPost: string | null;
+}
+
+export interface AuthorPostStatDto {
+  author: string;
+  postCount: number;
+}
+
 export interface ListResponse<T> {
   items: T[];
   totalItems: number;

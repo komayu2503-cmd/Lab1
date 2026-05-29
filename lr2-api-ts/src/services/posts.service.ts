@@ -110,7 +110,7 @@ export const postsService = {
     return postsRepository.getStats();
   },
 
-  authorStats(): { category: string; uniqueAuthors: number; postCount: number }[] {
+  authorStats(): { author: string; postCount: number }[] {
     return postsRepository.getAuthorStats();
   },
 
